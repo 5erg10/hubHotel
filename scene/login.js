@@ -1,6 +1,6 @@
 userList = [];
 
-fetch('/user/list').then(response => 
+fetch('https://nexthotelhub.herokuapp.com:443/user/list').then(response => 
   response.json().then(data => {
     console.log('data: ',data);
     userList = data;
