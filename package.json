@@ -1,0 +1,15 @@
+{
+  "name": "web",
+  "version": "1.0.0",
+  "description": "Reproducción virtual de las diferentes sedes de NEXT que podremos recorrer con nuestro avatar, pudiendo conocer el ambiente de trabajo y conectar con otros compañeros.",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.16.4"
+  },
+  "author": "",
+  "license": "ISC"
+}
