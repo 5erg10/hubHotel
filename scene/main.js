@@ -46,7 +46,7 @@ $(document).ready(function () {
     }
     if( debbugerSkipOption == false ) localStorage.removeItem('configDataObject');
 
-    socket = io.connect(`https://nexthotelhub.herokuapp.com:443`, {transports: ['websocket']});
+    socket = io.connect(`https://web-production-a546.up.railway.app:443`, {transports: ['websocket']});
 
     socket.on('newUserLogin', function(data){
         console.log(data);
