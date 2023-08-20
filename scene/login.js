@@ -1,6 +1,6 @@
 userList = [];
 
-fetch('https://web-production-a546.up.railway.app:443/user/list').then(response => 
+fetch('https://hubhotelserver-94gt-dev.fl0.io/user/list').then(response => 
   response.json().then(data => {
     console.log('data: ',data);
     userList = data;
