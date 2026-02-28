@@ -9,6 +9,7 @@ let deptInfoDescription = {
     "Recepción": 'Gracias a su ayuda, nunca pierdes el rumbo.',
     "Cocina": 'Mucho de todo y Mucho de sano. Compra lo que quieras para mantener una dieta equilibrada.'
 };
+
 function doSomething(objectName){
     switch (objectName){
         case "Innovacion":

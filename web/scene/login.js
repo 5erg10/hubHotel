@@ -1,6 +1,6 @@
 userList = [];
 
-fetch('http://192.168.0.103:3000/user/list').then(response => 
+fetch('http://localhost:3000/user/list').then(response => 
   response.json().then(data => {
     console.log('data: ',data);
     userList = data;

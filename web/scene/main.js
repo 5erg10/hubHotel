@@ -1,7 +1,7 @@
 window.addEventListener('resize', onWindowResize, false);
 //Debugg options
 //Select true for skip config menu and seek to scene directly
-let debbugerSkipOption = false;
+const debbugerSkipOption = true;
 //select type of controls = "camera" for free camera control or "avatar" for avatar keys control
 const typeOfControls = "avatar";// options: ["avatar", "camera"]
 
@@ -38,15 +38,27 @@ let turnOnCollision = false;
 let jumping = false;
 
 $(document).ready(function () {
-    generateMenu();
+
+    generatePlantSelectorMenu();
     initRender();
     animate();
+
     if(localStorage.getItem('configDataObject') !== null && debbugerSkipOption == true){
         skipMenus(JSON.parse( localStorage.getItem('configDataObject')));
     }
     if( debbugerSkipOption == false ) localStorage.removeItem('configDataObject');
 
-    socket = io.connect(`http://192.168.0.103:3000/`, {transports: ['websocket']});
+    initWebsocketsSubscription();
+   
+});
+
+$(window).on("beforeunload", function() { 
+    socket.emit('sendLogOutUser', { userName: saveData.userName, office: saveData.office, message: "me piro vampiro!!" });
+});
+
+const initWebsocketsSubscription = () =>{
+
+    socket = io.connect(`http://localhost:3000/`, {transports: ['websocket']});
 
     socket.on('newUserLogin', function(data){
         console.log(data);
@@ -57,18 +69,21 @@ $(document).ready(function () {
             }
         })
     });
+
     socket.on('refreshUsers', function (data) {
         if (scene.getObjectByName( data.userName ) && saveData.userName !== data.userName) {
             scene.getObjectByName( data.userName ).position.set(data.position.x, data.position.y, data.position.z);
             scene.getObjectByName( data.userName ).rotation.y = data.rotation;
         }
     });
+
     socket.on('logOutUser', function (data) {
         scene.remove(scene.getObjectByName(data.userName));
         interactiveObjects = interactiveObjects.filter(item => item.name !== data.userName);
         delete externaUsersList[data.userName];
     
     });
+
     socket.on('publicChatResponses', function(data) {
         const user = externaUsersList[data.sender];
         if (user) {
@@ -79,11 +94,7 @@ $(document).ready(function () {
             setTimeout(()=> user.avatarModel.remove(label), 20000);
         }
     });
-});
-
-$(window).on("beforeunload", function() { 
-    socket.emit('sendLogOutUser', { userName: saveData.userName, office: saveData.office, message: "me piro vampiro!!" });
-})
+}
 
 function subscribeToPersonalChannel(userName) {
     socket.on(userName, function (data) {
@@ -99,9 +110,9 @@ function subscribeToPersonalChannel(userName) {
     });
 };
 
-function generateMenu(){
-    plantas.map(function(plantName){
-        $(".officeSelectorMenu").prepend('<div class="plantSelectButton '+plantName+"Style"+'" onclick=loadOffice("'+plantName+'")><P>'+plantName+'</p></div>');
+function generatePlantSelectorMenu(){
+    plantas.map((plantName) => {
+        $(".officeSelectorMenu").prepend('<div class="plantSelectButton ' + plantName + "Style"+'" onclick=loadOffice("' + plantName + '")><P>' + plantName + '</p></div>');
     });
 }
 
@@ -125,8 +136,7 @@ function setBody(value){
     }
 }
 
-function initRender() {
-
+const initRender = () => {
     scene = new THREE.Scene();
 
     renderer = new THREE.WebGLRenderer({antialias: true, preserveDrawingBuffer: true, alpha: true});
@@ -140,8 +150,10 @@ function initRender() {
 
     element = renderer.domElement;
 
-    let container = document.getElementById('container');
+    const container = document.getElementById('container');
+
     container.appendChild(element);
+
     element.id = "svgObject";
 
     camera = new THREE.PerspectiveCamera(60, (width / height), 0.01, 10000000);
@@ -169,74 +181,125 @@ function initRender() {
     ambientLight = new THREE.AmbientLight(0xffffff, 1);
     ambientLight.position.set(0, 0.6, 0);
     ambientLight.name = "mainLight";
+
     scene.add(ambientLight);
 
     let directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
     directionalLight.position.set(3,3,3);
     directionalLight.name = "secondaryLight";
+
     scene.add( directionalLight );
 }
 
-function loadAvatar() {
+const logInUser = () => {
 
-    //remove previous avatar elements created
+    //send data to database
+    const myHeaders = new Headers();
+    myHeaders.append('content-type', 'application/json')
+ 
+    const bodyToSend = { 
+        userName: saveData.userName,
+        userHead: saveData.head,
+        userBody: saveData.body,
+        office: saveData.office
+    };
+
+    fetch('/newUser', { 
+        method: 'POST',
+        headers: myHeaders,
+        body: JSON.stringify(bodyToSend),  
+    });
+
+    console.log('userData: ', saveData);
+
+    // subscribe to socket personal channel to receive private messages and notifications of other users interactions
+    subscribeToPersonalChannel(saveData.userName);
+
+    if(debbugerSkipOption == true) {
+        localStorage.setItem('configDataObject', JSON.stringify(saveData));
+    }
+
+    //send data to inscribe user in system and print in other client
+    socket.emit('loginUser', saveData);
+    //Send data to socketIO server for refresh user status in other clients
+    setInterval(() => {
+        socket.emit('StatusUser', saveData);
+    }, 80);
+}
+
+const modelLoadingErrorControl = (xhr) => {
+    console.log('An error happened while loading the model: ', xhr);
+}
+
+const loadAvatar = (officeName) => {
+
+    const userNameInput = document.getElementById("inputNameLabel").value.replace(/\s/g, "_");
+
     scene.remove(avatar);
+
     for (var i = avatar.children.length - 1; i >= 0; i--) {
         avatar.remove(avatar.children[i]);
     }
 
-    //Promise to control de % of objects loading
-    let onProgress = function (xhr) {
-        if (xhr.lengthComputable) {
-            let percentComplete = xhr.loaded / xhr.total * 100;
-            console.log(percentComplete);
-            if (percentComplete == 100) {
-                console.log('Avatar model loaded!!');
-            }
-        }
-    };
-    let onError = function (xhr) {
-    };
-
-    animLoader = new THREE.GLTFLoader();
-    animLoader.load( 'models/avatars/bodies/' + avatarConfig.body + '.glb', function ( gltf ) {
+    animLoader = new THREE.GLTFLoader().load( 'models/avatars/bodies/' + avatarConfig.body + '.glb', function ( gltf ) {
         bodyModel = gltf.scene;
         avatarAnimations = gltf.animations;
         bodyModel.name = 'body';
         avatar.add( bodyModel );
         mixer = new THREE.AnimationMixer( bodyModel );
-    }, onProgress, onError);
+    }, (xhr) => {
+        if (xhr.lengthComputable) {
+            const percentComplete = xhr.loaded / xhr.total * 100;
+            if (percentComplete == 100) {
+                console.log('body model loaded!!');
+            }
+        }
+    }, modelLoadingErrorControl);
 
-    headanimLoader = new THREE.GLTFLoader();
-    headanimLoader.load( 'models/avatars/heads/' + avatarConfig.head + '.glb', function ( gltf ) {
+    headanimLoader = new THREE.GLTFLoader().load( 'models/avatars/heads/' + avatarConfig.head + '.glb', function ( gltf ) {
         headModel = gltf.scene;
         avatarHeadAnimation = gltf.animations;
         headModel.name = 'head';
         avatar.add( headModel );
         headmixer = new THREE.AnimationMixer( headModel );
-    }, onProgress, onError);
+    }, (xhr) => {
+        if (xhr.lengthComputable) {
+            const percentComplete = xhr.loaded / xhr.total * 100;
+            if (percentComplete == 100) {
+                console.log('head model loaded!!');
+            }
+        }
+    }, modelLoadingErrorControl);
 
     //adding cube inside avatar model to check collisions
-    let collisionCubeGeometry = new THREE.BoxGeometry(0.06, 0.06, 0.06);
-    let collisionCubeMaterial = new THREE.MeshLambertMaterial({color: 0xff2255});
+    const collisionCubeGeometry = new THREE.BoxGeometry(0.06, 0.06, 0.06);
+    const collisionCubeMaterial = new THREE.MeshLambertMaterial({color: 0xff2255});
     collisionCube = new THREE.Mesh(collisionCubeGeometry, collisionCubeMaterial);
-    collisionCube.name = saveData.userName;
+    collisionCube.name = userNameInput;
     collisionCube.visible = false;
     collisionCube.position.y = 0.06;
+
     avatar.add(collisionCube);
-    avatar.name = saveData.userName;
+
     turnOnCollision = true;
+    
+    avatar.name = userNameInput;
     avatar.position.set(0, 0, 0);
+
     scene.add(avatar);
+
     avatarControls.checkCollision = () => checkCollision(collisionCube);
-    //send data to inscribe user in system and print in other client
-    const userDataToLogin = Object.assign(saveData, { position: avatar.position, rotation: avatar.rotation.y, status: avatarControls.action });
-    socket.emit('loginUser', userDataToLogin);
-    //Send data to socketIO server for refresh user status in other clients
-    setInterval(() => {
-        const userDataToSend = Object.assign(saveData, { position: avatar.position, rotation: avatar.rotation.y, status: avatarControls.action });
-        socket.emit('StatusUser', userDataToSend);
-    }, 80);
+
+    Object.assign(saveData, { 
+        position: avatar.position,
+        rotation: avatar.rotation.y,
+        status: avatarControls.action,
+        office: officeName,
+        userName: userNameInput,
+        head: avatarConfig.head,
+        body: avatarConfig.body
+    });
+    logInUser();
 }
 
 function loadAvatarExternal(externalAvatar) {
@@ -262,8 +325,8 @@ function loadAvatarExternal(externalAvatar) {
     });
 
     //adding cube inside avatar model to check collisions
-    let collisionCubeGeometry = new THREE.BoxGeometry(0.06, 0.06, 0.06);
-    let collisionCubeMaterial = new THREE.MeshLambertMaterial({color: 0xff2255});
+    const collisionCubeGeometry = new THREE.BoxGeometry(0.06, 0.06, 0.06);
+    const collisionCubeMaterial = new THREE.MeshLambertMaterial({color: 0xff2255});
     collisionCubeMaterial.transparent = true;
     collisionCubeMaterial.opacity = 0;
     newUserObject.collisionCube = new THREE.Mesh(collisionCubeGeometry, collisionCubeMaterial);
@@ -273,7 +336,9 @@ function loadAvatarExternal(externalAvatar) {
     newUserObject.avatarModel.add(newUserObject.collisionCube);
     newUserObject.avatarModel.name = externalAvatar.userName;
     newUserObject.avatarModel.add(initLabels(externalAvatar.userName));
+
     interactiveObjects.push(newUserObject.collisionCube);
+
     scene.add(newUserObject.avatarModel);
 }
 
@@ -286,27 +351,36 @@ function christmastTime() {
     });
 }
 
-function loadOffice(officeName) {
+const loadOffice = (officeName) => {
+
     interactiveObjects = [];
     tl.tweenTo("openApp");
+
     $('#container').removeClass('displayOn');
+
     scene.remove(planta);
+
     planta.remove(planta.children[0]);
+
     let onProgress = function (xhr) {
         if (xhr.lengthComputable) {
             let percentComplete = xhr.loaded / xhr.total * 100;
-            if (percentComplete == 100) {}
+            if (percentComplete == 100) {
+                $('#container').addClass('displayOn');
+                loadAvatar(officeName);
+            }
         }
     };
+
     let onError = function (xhr) {
     };
 
-    let mtlLoader = new THREE.MTLLoader();
+    const mtlLoader = new THREE.MTLLoader();
     mtlLoader.setPath('models/');
     mtlLoader.setMaterialOptions ( { side: THREE.DoubleSide } );
-    mtlLoader.load(officeName+'.mtl', function (materials) {
+    mtlLoader.load(officeName+'.mtl', (materials) => {
         materials.preload();
-        let objLoader = new THREE.OBJLoader();
+        const objLoader = new THREE.OBJLoader();
         objLoader.setMaterials(materials);
         objLoader.setPath('models/');
         objLoader.load(officeName+'.obj', function (elements) {
@@ -326,38 +400,10 @@ function loadOffice(officeName) {
             });
             elements.name = officeName;
             planta.add(elements);
-            $('#container').addClass('displayOn');
-            loadAvatar();
         }, onProgress, onError);
     });
+
     scene.add(planta);
-
-    let userNameInput = (document.getElementById("inputNameLabel").value).replace(/\s/g, "_");
-    
-    //send data to database
-    let myHeaders = new Headers()
-    myHeaders.append('content-type', 'application/json')
- 
-    const bodyToSend = { 
-        userName: userNameInput,
-        userHead: avatarConfig.head,
-        userBody: avatarConfig.body,
-        office: officeName
-    };
-
-    console.log('bodyToSend: ', JSON.stringify(bodyToSend));
-
-    fetch('/newUser', { 
-        method: 'POST',
-        headers: myHeaders,
-        body: JSON.stringify(bodyToSend),  
-    });
-
-    Object.assign(saveData, avatarConfig, { office: officeName }, { userName: userNameInput });
-    subscribeToPersonalChannel(saveData.userName);
-    if(debbugerSkipOption == true) {
-        localStorage.setItem('configDataObject', JSON.stringify(saveData));
-    }
 }
 
 function skipMenus(savedDatas){
@@ -427,11 +473,10 @@ function animate() {
         controls.update(clock.getDelta());
     }
     if ( avatarControls != undefined ) {
-        if(mixer){
-            let readedAction = avatarControls.action != undefined ? avatarControls.action : "stand";   
-
-            let bodyAnimation = avatarAnimations[ avatarAnimations.findIndex(x => x.name === readedAction) ];
-            let headAnimation = avatarHeadAnimation[ avatarHeadAnimation.findIndex(x => x.name === readedAction) ];
+        if(mixer && headmixer) {
+            const readedAction = avatarControls.action != undefined ? avatarControls.action : "stand";   
+            const bodyAnimation = avatarAnimations[ avatarAnimations.findIndex(x => x.name === readedAction) ];
+            const headAnimation = avatarHeadAnimation[ avatarHeadAnimation.findIndex(x => x.name === readedAction) ];
             let bodyClip = mixer.clipAction( bodyAnimation );
             let headClip = headmixer.clipAction( headAnimation );
 
@@ -469,7 +514,9 @@ function animate() {
             }
         }            
     }
+
     render();
+
     TWEEN.update();
 
     setTimeout(function() {

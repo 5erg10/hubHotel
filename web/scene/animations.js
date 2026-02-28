@@ -34,7 +34,7 @@ function removeCollision(){
         bottom: -1500, 
         ease: Power1.easeIn });
     //remove private chat text lines
-    const node= document.getElementById("chatMessageList");
+    const node = document.getElementById("chatMessageList");
     const popInfoNode = document.getElementById("popInfoBox");
     
     while (node.firstChild) {
@@ -64,7 +64,7 @@ function  openPrivateChat(){
 function fillWithNewMessage(writer, text, owner) {
     const textToPrint = owner ? "<b>you:</b> " + text : "<b>"+writer + ":</b> " + text;
     const node = document.getElementById("chatMessageList");
-    const textClass= owner ? "messageReceiverText"  : "messageSenderText";
+    const textClass = owner ? "messageReceiverText"  : "messageSenderText";
     node.insertAdjacentHTML("beforeend", '<p class=' + textClass + '>' + textToPrint + '</p>');
 }
 
