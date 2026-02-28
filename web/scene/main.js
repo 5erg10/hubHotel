@@ -46,7 +46,7 @@ $(document).ready(function () {
     }
     if( debbugerSkipOption == false ) localStorage.removeItem('configDataObject');
 
-    socket = io.connect(`http://localhost:3000/`, {transports: ['websocket']});
+    socket = io.connect(`http://192.168.0.103:3000/`, {transports: ['websocket']});
 
     socket.on('newUserLogin', function(data){
         console.log(data);
