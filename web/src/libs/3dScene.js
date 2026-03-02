@@ -75,7 +75,7 @@ export class Scene3D {
         this.#renderer.sortObjects = false;
         this.#renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.#renderer.setSize( this.#with, this.#height );
-        this.#renderer.setClearColor(0xffffff, 0);
+        this.#renderer.setClearColor(0x2776b3, 1);
         this.#renderer.setViewport(0, 0, this.#with, this.#height);
         this.#renderer.gammaOutput = true;
     };
