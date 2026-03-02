@@ -71,6 +71,10 @@ document.addEventListener('floorSelected', async (event) => {
     });
     usercontroller.enableControls();
 
+    // Conectar UserControls con Scene3D para que las colisiones bloqueen
+    // el movimiento en la dirección del impacto (física direccional).
+    mainScene.setUserControls(usercontroller);
+
     mainScene.animScene();
 
     timeline.tweenTo('openApp');
@@ -104,6 +108,5 @@ window.setAvatarConfig = (part, step) => {
     avatarConfig.current = avatarConfig.options[partIndex['true']];
     avatarConfig.domElement.src = `${avatarConfig.imagesDirectory}${avatarConfig.current}.png`;
 };
-
 
 
