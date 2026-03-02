@@ -21,15 +21,26 @@ app.use((req, res, next) => {
     next();
 });
 
+// ── MongoDB ────────────────────────────────────────────────────────────────────
+// const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/hubhotel';
+
+// mongoose
+//   .connect(MONGO_URI)
+//   .then(() => console.log(`MongoDB connected: ${MONGO_URI}`))
+//   .catch((err) => {
+//     console.error('MongoDB connection error:', err.message);
+//     process.exit(1);
+//   });
+
 app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 
-app.use(express.static("web"));
+// app.use(express.static("web"));
 
-app.get('/', (request, response) => {
-  response.redirect('/index.html');
-});
+// app.get('/', (request, response) => {
+//   response.redirect('/index.html');
+// });
 
 const server = http.createServer(app);
 

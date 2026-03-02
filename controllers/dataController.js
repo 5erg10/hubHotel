@@ -9,19 +9,31 @@ const index = (req, res) => {
     });
 };
 
-const newUser = (req, res) => {
-    let contact = new User();
-    contact.userName = req.body.userName ? req.body.userName : "null";
-    contact.userHead = req.body.userHead ? req.body.userHead : "null";
-    contact.userBody = req.body.userBody ? req.body.userBody : "null";
-    contact.office = req.body.office ? req.body.office : "null";
-    contact.save((err) => {
-        if (err) return res.json(err);
-        res.json({
-            message: 'New User created!',
-            data: contact
-        });
-    });
+const newUser = async (req, res) => {
+    try {
+      const user = new User({
+        userName: req.body.userName || 'null',
+        userHead: req.body.userHead || 'null',
+        userBody: req.body.userBody || 'null',
+        office:   req.body.office   || 'null',
+      });
+      const saved = await user.save();
+      res.status(201).json({ message: 'New user created!', data: saved });
+    } catch (err) {
+      res.status(400).json({ status: 'error', message: err.message });
+    }
+    // let contact = new User();
+    // contact.userName = req.body.userName ? req.body.userName : "null";
+    // contact.userHead = req.body.userHead ? req.body.userHead : "null";
+    // contact.userBody = req.body.userBody ? req.body.userBody : "null";
+    // contact.office = req.body.office ? req.body.office : "null";
+    // contact.save((err) => {
+    //     if (err) return res.json(err);
+    //     res.json({
+    //         message: 'New User created!',
+    //         data: contact
+    //     });
+    // });
 };
 
 const viewUsers = (req, res) => {
