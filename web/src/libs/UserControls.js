@@ -2,88 +2,80 @@ export class UserControls {
     constructor({avatar, camera, mixer}) {
 
         this.avatar = avatar;
-
         this.camera = camera;
-
         this.animConfig = mixer;
-
         this.moveSpeed = 0.02;
 
-        this.keyPressed = 'none';
+        // Set de teclas actualmente pulsadas. El movimiento se aplica cada frame
+        // en el loop interno, no en el evento keydown, eliminando el key-repeat delay del SO.
+        this.keysActive = new Set();
 
         this.move = {
-            forward: {init: 0, block: false},
-            backward: {init: 0, block: false},
-            left: {init: 0, block: false},
-            right: {init: 0, block: false}
+            forward: {block: false},
+            backward: {block: false},
+            left: {block: false},
+            right: {block: false}
         };
 
-        this.direction = { "x":0, "y":0, "z":0 };
+        this.direction = { x: 0, y: 0, z: 0 };
         this.action = "stand";
+
+        this.#loopId = null;
     };
 
-    getDirection() {
-        return this.direction;
-    };
+    // ID del requestAnimationFrame para poder cancelarlo en disableControls
+    #loopId = null;
 
-    getAction() {
-        return this.action;
-    };
+    getDirection() { return this.direction; };
+    getAction()    { return this.action; };
 
     blockIfCollision = () => {
         this.avatar.position.z -= this.direction.z * 1;
         this.avatar.position.x += this.direction.x * 1;
-        blockMovement(this.direction);
-        this.direction = { "x":0, "y":0, "z":0 };
-    }
+        this.blockMovement();
+        this.direction = { x: 0, y: 0, z: 0 };
+    };
 
-    // action must be 'play' or 'stop'
     #activeMixerAnimation = (action) => {
-        const BodyAnimation = this.animConfig.body.mixer.clipAction(this.animConfig.body.animations.find(animation => animation.name === this.action));
-        const HeadAnimation = this.animConfig.head.mixer.clipAction(this.animConfig.head.animations.find(animation => animation.name === this.action));
-        if( action === 'stop' || !BodyAnimation?.isRunning()) {
-            if(HeadAnimation) {
-                if(this,action == 'jump') HeadAnimation.setEffectiveTimeScale(3)
+        const BodyAnimation = this.animConfig.body.mixer.clipAction(this.animConfig.body.animations.find(a => a.name === this.action));
+        const HeadAnimation = this.animConfig.head.mixer.clipAction(this.animConfig.head.animations.find(a => a.name === this.action));
+        if (action === 'stop' || !BodyAnimation?.isRunning()) {
+            if (HeadAnimation) {
+                if (this.action == 'jump') HeadAnimation.setEffectiveTimeScale(3);
                 HeadAnimation[action]();
             }
-            if(BodyAnimation) {
-                if(this,action == 'jump') BodyAnimation.setEffectiveTimeScale(3)
+            if (BodyAnimation) {
+                if (this.action == 'jump') BodyAnimation.setEffectiveTimeScale(3);
                 BodyAnimation[action]();
             }
         }
-    }
+    };
 
-    movements = (key) => {
+    // Aplica el movimiento correspondiente a las teclas activas.
+    // Se llama cada frame desde el loop interno — sin dependencia del key-repeat del SO.
+    #applyMovement = () => {
+        const keys = this.keysActive;
+        if (keys.size === 0) return;
 
-        const actions = {
-            ['true']: () => { console.log('no configured key: ', key) },
-            [['ArrowUp', 'KeyW'].includes(key)]: () => {
-                this.move.forward.init = this.move.forward.block ? 0 : -1;
-                this.avatar.rotation.y = -Math.PI / 2; 
-                this.action = "walk"; 
-            },
-            [['ArrowDown', 'KeyS'].includes(key)]: () => {
-                this.move.backward.init = this.move.backward.block ? 0 : -1;
-                this.avatar.rotation.y = Math.PI / 2;
-                this.action = "walk";
-            },
-            [['ArrowLeft', 'KeyA'].includes(key)]: () => {
-                this.move.left.init = this.move.left.block ? 0 : 1;
-                this.avatar.rotation.y = 0;
-                this.action = "walk";
-            },
-            [['ArrowRight', 'KeyD'].includes(key)]: () => {
-                this.move.right.init = this.move.right.block ? 0 : 1;
-                this.avatar.rotation.y = Math.PI;
-                this.action = "walk";
-            },
-            [key === 'Space']: () => {
-                this.action = "jump";
-            }
-        }['true']();
+        let dx = 0, dz = 0;
+        let moving = false;
 
-        this.direction.x = (this.move.forward.init - this.move.backward.init) * this.moveSpeed;
-        this.direction.z = (this.move.left.init - this.move.right.init ) * this.moveSpeed;
+        if ((keys.has('ArrowUp')   || keys.has('KeyW')) && !this.move.forward.block)  { dx = -1; this.avatar.rotation.y = -Math.PI / 2; moving = true; }
+        if ((keys.has('ArrowDown') || keys.has('KeyS')) && !this.move.backward.block) { dx =  1; this.avatar.rotation.y =  Math.PI / 2; moving = true; }
+        if ((keys.has('ArrowLeft') || keys.has('KeyA')) && !this.move.left.block)     { dz =  1; this.avatar.rotation.y = 0;            moving = true; }
+        if ((keys.has('ArrowRight')|| keys.has('KeyD')) && !this.move.right.block)    { dz = -1; this.avatar.rotation.y =  Math.PI;     moving = true; }
+
+        if (keys.has('Space')) {
+            this.action = "jump";
+            this.#activeMixerAnimation('play');
+            return;
+        }
+
+        if (!moving) return;
+
+        this.action = "walk";
+        this.direction.x = dx * this.moveSpeed;
+        this.direction.z = dz * this.moveSpeed;
 
         this.avatar.position.x += this.direction.x;
         this.avatar.position.z += this.direction.z;
@@ -93,42 +85,57 @@ export class UserControls {
         this.#activeMixerAnimation('play');
     };
 
+    #loop = () => {
+        this.#applyMovement();
+        this.#loopId = requestAnimationFrame(this.#loop);
+    };
+
     blockMovement = () => {
-        const actions = {
-            ['true']: () => { console.log('no configured key: ', this.keyPressed) },
-            [['ArrowUp', 'KeyW'].includes(this.keyPressed)]: () => {
-                this.move.forward.block = true;
-            },
-            [['ArrowDown', 'KeyS'].includes(this.keyPressed)]: () => {
-                this.move.backward.block = true;
-            },
-            [['ArrowLeft', 'KeyA'].includes(this.keyPressed)]: () => {
-                this.move.left.block = true;
-            },
-            [['ArrowRight', 'KeyD'].includes(this.keyPressed)]: () => {
-                this.move.right.block = true;
-            }
-        }['true']();
+        if (this.keysActive.has('ArrowUp')    || this.keysActive.has('KeyW')) this.move.forward.block  = true;
+        if (this.keysActive.has('ArrowDown')  || this.keysActive.has('KeyS')) this.move.backward.block = true;
+        if (this.keysActive.has('ArrowLeft')  || this.keysActive.has('KeyA')) this.move.left.block     = true;
+        if (this.keysActive.has('ArrowRight') || this.keysActive.has('KeyD')) this.move.right.block    = true;
     };
 
     stopMovement = () => {
+        this.keysActive.clear();
         this.#activeMixerAnimation('stop');
         this.action = "stand";
-        this.move.forward.init = 0;
-        this.move.backward.init = 0;
-        this.move.left.init = 0;
-        this.move.right.init = 0;    
+        this.move.forward.block  = false;
+        this.move.backward.block = false;
+        this.move.left.block     = false;
+        this.move.right.block    = false;
         this.direction.x = 0;
         this.direction.z = 0;
     };
 
+    #onKeyDown = (event) => {
+        // Ignorar repetición automática del SO — el movimiento ya lo gestiona el loop
+        if (event.repeat) return;
+        this.keysActive.add(event.code);
+    };
+
+    #onKeyUp = (event) => {
+        this.keysActive.delete(event.code);
+        // Si no queda ninguna tecla de movimiento pulsada, parar animación
+        const movementKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','Space'];
+        if (!movementKeys.some(k => this.keysActive.has(k))) {
+            this.stopMovement();
+        }
+    };
+
     enableControls = () => {
-        document.addEventListener('keydown', (event) => this.movements(event.code));
-        document.addEventListener('keyup', (event) => this.stopMovement());
+        document.addEventListener('keydown', this.#onKeyDown);
+        document.addEventListener('keyup',   this.#onKeyUp);
+        this.#loopId = requestAnimationFrame(this.#loop);
     };
 
     disableControls = () => {
-        document.removeEventListener('keydown', (event) => this.movements(event.code));
-        document.removeEventListener('keyup', (event) => this.stopMovement());
+        document.removeEventListener('keydown', this.#onKeyDown);
+        document.removeEventListener('keyup',   this.#onKeyUp);
+        if (this.#loopId !== null) {
+            cancelAnimationFrame(this.#loopId);
+            this.#loopId = null;
+        }
     };
 };
