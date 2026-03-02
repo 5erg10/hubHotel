@@ -8,9 +8,18 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 // siempre intersectaría. Para estos usamos raycasters cortos en lugar de Box3.
 const HOLLOW_OBJECTS = ['interactparedes', 'interactcristaleras'];
 
+// Las 4 direcciones de movimiento del avatar mapeadas a su vector world-space.
+// Deben coincidir con los ejes usados en UserControls#applyMovement.
+// forward = X negativo, backward = X positivo, left = Z positivo, right = Z negativo
+const MOVE_DIRECTIONS = {
+    forward:  new THREE.Vector3(-1, 0,  0),
+    backward: new THREE.Vector3( 1, 0,  0),
+    left:     new THREE.Vector3( 0, 0,  1),
+    right:    new THREE.Vector3( 0, 0, -1),
+};
+
 export class Scene3D {
 
-    // private params
     #floor;
     #avatar;
     #renderer;
@@ -23,10 +32,15 @@ export class Scene3D {
     #userName;
     #playerBox;
 
-    // Raycasters reutilizables para objetos huecos (paredes, cristaleras).
-    // 8 direcciones horizontales, distancia máxima = #collisionThreshold.
+    // Referencia a UserControls para notificar bloqueos/desbloqueos de dirección
+    #userControls = null;
+
     #hollowRaycasters;
     #collisionThreshold = 0.05;
+
+    // Raycasters con mayor alcance para detectar si el avatar YA SE ALEJÓ de una superficie.
+    // Mismo umbral + pequeño margen para que el desbloqueo ocurra antes de separarse del todo.
+    #releaseThreshold = 0.08;
 
     constructor() {
         this.#interactiveObjects = [];
@@ -64,7 +78,6 @@ export class Scene3D {
             return raycaster;
         });
 
-        // Set up frame size
         this.#with = window.innerWidth;
         this.#height = window.innerHeight;
 
@@ -94,6 +107,12 @@ export class Scene3D {
     getAvatar()   { return this.#avatar; };
     getAvatarMixerConfig() { return this.#avatarAnimConfig; };
 
+    // Conecta UserControls para que #checkAvatarCollision pueda bloquear/desbloquear direcciones.
+    // Se llama desde main.js después de crear ambas instancias.
+    setUserControls(userControls) {
+        this.#userControls = userControls;
+    };
+
     addFloorToScene(officeName) {
         return new Promise((resolve) => {
 
@@ -114,18 +133,12 @@ export class Scene3D {
                         plantObject.name = plantObject.name.replace(/_[a-z]*.[0-9]*/gi, "");
 
                         if (plantObject.name.match("interact")) {
-                            // Identificar si es hueco ANTES de quitar el prefijo "interact"
                             const normalizedName = plantObject.name.toLowerCase();
                             const isHollow = HOLLOW_OBJECTS.some(h => normalizedName.includes(h));
 
                             if (isHollow) {
-                                // Objetos huecos: se detecta colisión por raycasting lateral,
-                                // no por Box3, porque el avatar se mueve dentro de su volumen.
                                 plantObject.userData.collisionType = 'hollow';
                             } else {
-                                // Objetos sólidos: el avatar los rodea por fuera.
-                                // Calculamos el Box3 una sola vez aquí; como son estáticos
-                                // este valor es válido para toda la sesión.
                                 plantObject.userData.collisionType = 'solid';
                                 plantObject.userData.collisionBox = new THREE.Box3().setFromObject(plantObject);
                             }
@@ -236,43 +249,76 @@ export class Scene3D {
         });
     };
 
+    // Dado un vector dirección world-space del impacto, devuelve qué dirección
+    // de movimiento del avatar corresponde ('forward'|'backward'|'left'|'right'|null).
+    // Se elige la dirección cuyo vector tenga mayor dot product con el impacto.
+    #worldVectorToMoveDirection = (hitVector) => {
+        let bestDir = null;
+        let bestDot = 0.3; // umbral mínimo para evitar falsos positivos en diagonales
+
+        for (const [dir, vec] of Object.entries(MOVE_DIRECTIONS)) {
+            const dot = hitVector.dot(vec);
+            if (dot > bestDot) {
+                bestDot = dot;
+                bestDir = dir;
+            }
+        }
+        return bestDir;
+    };
+
     #checkAvatarCollision = () => {
         const collisionCube = this.#avatar.children.find(child => child.name === this.#userName);
         if (!collisionCube || this.#interactiveObjects.length === 0) return;
 
+        // Conjunto de direcciones con colisión activa este frame
+        const activeCollisions = new Set();
+
         // --- Objetos SÓLIDOS: Box3 vs Box3 ---
         this.#playerBox.setFromObject(collisionCube);
+
+        collisionCube.updateWorldMatrix(true, false);
+        const avatarPos = new THREE.Vector3();
+        collisionCube.getWorldPosition(avatarPos);
 
         const solidObjects = this.#interactiveObjects.filter(o => o.userData.collisionType === 'solid');
         for (const obj of solidObjects) {
             if (this.#playerBox.intersectsBox(obj.userData.collisionBox)) {
-                console.log('hay colision con', obj.name);
+                // Calcular el vector del centro del objeto al avatar para saber la dirección del impacto
+                const objCenter = new THREE.Vector3();
+                obj.userData.collisionBox.getCenter(objCenter);
+                const hitVector = new THREE.Vector3().subVectors(avatarPos, objCenter).normalize();
+                hitVector.y = 0;
+
+                const dir = this.#worldVectorToMoveDirection(hitVector);
+                if (dir) activeCollisions.add(dir);
             }
         }
 
-        // --- Objetos HUECOS: raycasting lateral desde el collisionCube ---
+        // --- Objetos HUECOS: raycasting lateral ---
         const hollowObjects = this.#interactiveObjects.filter(o => o.userData.collisionType === 'hollow');
-        if (hollowObjects.length === 0) return;
 
-        collisionCube.updateWorldMatrix(true, false);
-        const origin = new THREE.Vector3();
-        collisionCube.getWorldPosition(origin);
+        if (hollowObjects.length > 0) {
+            for (const raycaster of this.#hollowRaycasters) {
+                raycaster.ray.origin.copy(avatarPos);
+                const hits = raycaster.intersectObjects(hollowObjects, true);
 
-        const alreadyHit = new Set();
-
-        for (const raycaster of this.#hollowRaycasters) {
-            raycaster.ray.origin.copy(origin);
-            const hits = raycaster.intersectObjects(hollowObjects, true);
-
-            if (hits.length > 0) {
-                let hitObject = hits[0].object;
-                while (hitObject.parent && !hollowObjects.includes(hitObject)) {
-                    hitObject = hitObject.parent;
+                if (hits.length > 0) {
+                    // La dirección del raycaster apunta hacia el objeto → el avatar
+                    // se mueve en esa dirección → hay que bloquearla
+                    const dir = this.#worldVectorToMoveDirection(raycaster.ray.direction);
+                    if (dir) activeCollisions.add(dir);
                 }
-                if (!alreadyHit.has(hitObject)) {
-                    alreadyHit.add(hitObject);
-                    console.log('hay colision con', hitObject.name, '| distancia:', hits[0].distance.toFixed(4));
-                }
+            }
+        }
+
+        // --- Sincronizar bloqueos con UserControls ---
+        if (!this.#userControls) return;
+
+        for (const dir of Object.keys(MOVE_DIRECTIONS)) {
+            if (activeCollisions.has(dir)) {
+                this.#userControls.blockDirection(dir);
+            } else {
+                this.#userControls.unblockDirection(dir);
             }
         }
     };
