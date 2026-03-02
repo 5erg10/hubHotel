@@ -18,31 +18,10 @@ export class Scene3D {
     #interactiveObjects;
     #userName;
     #playerBox;
-    #tempBox;
-
-    // Collision raycasters reused every frame to avoid GC pressure.
-    // 8 horizontal directions × 3 heights = 24 raycasters total.
-    // Multiple scan heights are needed because objects like tables have
-    // geometry only at specific Y levels (legs at ~0.06, tabletop at ~0.75).
-    // Walls/panels are tall so a single height sufficed for them, but
-    // compact furniture requires scanning at several heights to guarantee a hit.
-    #collisionRaycasters;
-
-    // Max distance (world units) at which a ray hit registers as a collision.
-    // Slightly larger than half the collisionCube side (0.06/2 = 0.03).
-    #collisionThreshold = 0.05;
-
-    // Y offsets (relative to avatar root) at which horizontal rays are cast.
-    // Low  = patas de mesas/sillas (~suelo)
-    // Mid  = zona media del cuerpo del avatar
-    // High = encimeras / tableros de mesa
-    #scanHeights = [0.06, 0.5, 0.9];
 
     constructor() {
-        // Set up global variables
         this.#interactiveObjects = [];
         this.#playerBox = new THREE.Box3();
-        this.#tempBox = new THREE.Box3();
 
         this.#userName;
 
@@ -64,31 +43,6 @@ export class Scene3D {
                 animations: null
             }
         };
-
-        // 8 horizontal directions × 3 scan heights = 24 raycasters
-        const rayDirections = [
-            new THREE.Vector3( 1,  0,  0),               // E
-            new THREE.Vector3(-1,  0,  0),               // W
-            new THREE.Vector3( 0,  0,  1),               // S
-            new THREE.Vector3( 0,  0, -1),               // N
-            new THREE.Vector3( 1,  0,  1).normalize(),   // SE
-            new THREE.Vector3(-1,  0,  1).normalize(),   // SW
-            new THREE.Vector3( 1,  0, -1).normalize(),   // NE
-            new THREE.Vector3(-1,  0, -1).normalize(),   // NW
-        ];
-
-        this.#collisionRaycasters = [];
-
-        for (const height of this.#scanHeights) {
-            for (const dir of rayDirections) {
-                const raycaster = new THREE.Raycaster();
-                raycaster.far = this.#collisionThreshold;
-                raycaster.ray.direction.copy(dir);
-                // Store the Y offset so we can position each ray at the right height each frame
-                raycaster._scanHeight = height;
-                this.#collisionRaycasters.push(raycaster);
-            }
-        }
 
         // Set up frame size
         this.#with = window.innerWidth;
@@ -167,10 +121,20 @@ export class Scene3D {
                 objLoader.load(officeName+'.obj', (officeObjects) => {
                     officeObjects.children.map((plantObject) => {
                         plantObject.name = plantObject.name.replace(/_[a-z]*.[0-9]*/gi, "");
-                        if( plantObject.name.match("interact")){
+
+                        if (plantObject.name.match("interact")) {
+                            // Calcular el Box3 del objeto una sola vez al cargar.
+                            // Como los objetos de planta son estáticos (nunca se mueven),
+                            // este Box3 es válido para toda la sesión sin recalcularse.
+                            // Guardamos el Box3 directamente en el objeto para accederlo en el loop.
+                            plantObject.geometry?.computeBoundingBox();
+                            const box = new THREE.Box3().setFromObject(plantObject);
+                            plantObject.userData.collisionBox = box;
                             this.#interactiveObjects.push(plantObject);
                         }
+
                         plantObject.name = plantObject.name.replace('interact','');
+
                         if(Array.isArray(plantObject.material)){
                             plantObject.material.map((mat) => {
                                 if(mat.name.substring(0,11) == 'transparent') mat.transparent = true;
@@ -287,37 +251,28 @@ export class Scene3D {
         const collisionCube = this.#avatar.children.find(child => child.name === this.#userName);
         if (!collisionCube || this.#interactiveObjects.length === 0) return;
 
-        // Get the avatar's world position (XZ base, Y=0 at avatar root).
-        // We apply the scan heights manually per raycaster below.
-        this.#avatar.updateWorldMatrix(true, false);
-        const avatarWorldPos = new THREE.Vector3();
-        this.#avatar.getWorldPosition(avatarWorldPos);
+        // Calcular el box del avatar en world space cada frame (se mueve constantemente)
+        this.#playerBox.setFromObject(collisionCube);
 
-        // Track which interactive objects have already triggered this frame
-        // so we don't log/callback the same object multiple times per frame.
-        const alreadyHit = new Set();
+        // Aplanar el playerBox en Y para comparar solo en XZ.
+        // Esto evita falsos positivos con objetos altos (paredes, cristaleras) cuyo
+        // Box3 abarca toda su altura: el avatar siempre estaría "dentro" en el eje Y
+        // aunque no esté tocando ninguna superficie lateral.
+        this.#playerBox.min.y = -Infinity;
+        this.#playerBox.max.y = Infinity;
 
-        for (const raycaster of this.#collisionRaycasters) {
-            // Position each ray at the avatar XZ center + the ray's own scan height offset
-            raycaster.ray.origin.set(
-                avatarWorldPos.x,
-                avatarWorldPos.y + raycaster._scanHeight,
-                avatarWorldPos.z
-            );
+        for (const interactiveObject of this.#interactiveObjects) {
+            // Usar el Box3 precalculado al cargar: los objetos de planta son estáticos
+            const objectBox = interactiveObject.userData.collisionBox;
+            if (!objectBox) continue;
 
-            const hits = raycaster.intersectObjects(this.#interactiveObjects, true);
+            // Aplanar también el objeto en Y por la misma razón
+            const flatObjectBox = objectBox.clone();
+            flatObjectBox.min.y = -Infinity;
+            flatObjectBox.max.y = Infinity;
 
-            if (hits.length > 0) {
-                // Walk up to the direct child of #interactiveObjects to get the named parent
-                let hitObject = hits[0].object;
-                while (hitObject.parent && !this.#interactiveObjects.includes(hitObject)) {
-                    hitObject = hitObject.parent;
-                }
-
-                if (!alreadyHit.has(hitObject)) {
-                    alreadyHit.add(hitObject);
-                    console.log('hay colision con', hitObject.name, '| altura:', raycaster._scanHeight, '| distancia:', hits[0].distance.toFixed(4));
-                }
+            if (this.#playerBox.intersectsBox(flatObjectBox)) {
+                console.log('hay colision con', interactiveObject.name);
             }
         }
     };
