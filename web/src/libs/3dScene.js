@@ -240,48 +240,21 @@ export class Scene3D {
         });
     };
 
-    #getGlobalVertices = (object) => {
-        const vertices = [];
-        object.updateWorldMatrix(true, true); // asegurarnos de que matrixWorld esté actualizada
-        // Si es un Group, recorrer hijos
-        object.traverse((child) => {
-            if (child.isMesh && child.geometry) {
-                const geometry = child.geometry;
-                const position = geometry.attributes.position;
-                if (!position) return;
-
-                const vertex = new THREE.Vector3();
-                for (let i = 0; i < position.count; i++) {
-                    vertex.fromBufferAttribute(position, i);
-                    // aplicar transformaciones del objeto
-                    vertex.applyMatrix4(child.matrixWorld);
-                    vertices.push(vertex.clone());
-                }
-            }
-        });
-        return vertices;
-    }
-
     #checkAvatarCollision = () => {
-        const wpVector = new THREE.Vector3();
         const collisionCube = this.#avatar.children.find(child => child.name === this.#userName);
-        let nearCollision;
-        if(!collisionCube) return;
-        const originPoint = collisionCube.getWorldPosition(wpVector).clone();
-        this.#getGlobalVertices(collisionCube).forEach((vertex) => {
-            const localVertex = vertex.clone();
-            const globalVertex = localVertex.applyMatrix4(collisionCube.matrix);
-            const directionVector = globalVertex.sub(collisionCube.position);
+        if (!collisionCube) return;
 
-            const ray = new THREE.Raycaster(originPoint, directionVector.clone().normalize());
-            const collisionResults = ray.intersectObjects(this.#interactiveObjects, true);
-            if (collisionResults.length > 0 && collisionResults[0].distance < directionVector.length()) {
-                nearCollision = collisionResults.reduce((max = {}, item) => { item.distance <= max.distance ? max : item; });
-                if(nearCollision){
-                    console.log('hay colision con ', nearCollision.object.name);
-                }
-                return;
+        // Compute the player bounding box in world space
+        // setFromObject handles updateWorldMatrix internally, safe with modern Three.js
+        this.#playerBox.setFromObject(collisionCube);
+
+        for (const interactiveObject of this.#interactiveObjects) {
+            // Compute each interactive object bounding box in world space
+            this.#tempBox.setFromObject(interactiveObject);
+
+            if (this.#playerBox.intersectsBox(this.#tempBox)) {
+                console.log('hay colision con', interactiveObject.name);
             }
-        });
+        }
     };
 }
