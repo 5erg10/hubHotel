@@ -20,6 +20,15 @@ export class Scene3D {
     #playerBox;
     #tempBox;
 
+    // Collision raycasters: 8 directions at ground level (cardinal + diagonal)
+    // Reused each frame to avoid garbage collection pressure
+    #collisionRaycasters;
+
+    // Max distance in world units at which a ray hit counts as a real collision.
+    // Should be slightly larger than half the collisionCube side (0.06 / 2 = 0.03)
+    // so it triggers just as the cube surface touches the object surface.
+    #collisionThreshold = 0.05;
+
     constructor() {
         // Set up global variables
         this.#interactiveObjects = [];
@@ -46,6 +55,27 @@ export class Scene3D {
                 animations: null
             }
         };
+
+        // Build the 8 directional raycasters once and reuse them every frame.
+        // All rays point outward horizontally (Y=0) so vertical geometry like
+        // walls and glass panels are properly detected without floor interference.
+        const rayDirections = [
+            new THREE.Vector3( 1,  0,  0),  // E
+            new THREE.Vector3(-1,  0,  0),  // W
+            new THREE.Vector3( 0,  0,  1),  // S
+            new THREE.Vector3( 0,  0, -1),  // N
+            new THREE.Vector3( 1,  0,  1).normalize(),  // SE
+            new THREE.Vector3(-1,  0,  1).normalize(),  // SW
+            new THREE.Vector3( 1,  0, -1).normalize(),  // NE
+            new THREE.Vector3(-1,  0, -1).normalize(),  // NW
+        ];
+
+        this.#collisionRaycasters = rayDirections.map((dir) => {
+            const raycaster = new THREE.Raycaster();
+            raycaster.far = this.#collisionThreshold;
+            raycaster.ray.direction.copy(dir);
+            return raycaster;
+        });
 
         // Set up frame size
         this.#with = window.innerWidth;
@@ -223,7 +253,7 @@ export class Scene3D {
 
             if (this.#avatarAnimConfig.body.mixer && this.#avatarAnimConfig.head.mixer) {
                 this.#avatarAnimConfig.body.mixer.update(delta);
-                this.#avatarAnimConfig.head.mixer.update(delta);
+                this.#avatarAnimConfig.head.mixer.update(delta)
             }
 
             if (time - lastTime < fpsInterval) return;
@@ -242,18 +272,25 @@ export class Scene3D {
 
     #checkAvatarCollision = () => {
         const collisionCube = this.#avatar.children.find(child => child.name === this.#userName);
-        if (!collisionCube) return;
+        if (!collisionCube || this.#interactiveObjects.length === 0) return;
 
-        // Compute the player bounding box in world space
-        // setFromObject handles updateWorldMatrix internally, safe with modern Three.js
-        this.#playerBox.setFromObject(collisionCube);
+        // Get the collisionCube world position to use as the ray origin.
+        // We update the world matrix explicitly so Three.js r150+ lazy updates don't cause stale positions.
+        collisionCube.updateWorldMatrix(true, false);
+        const origin = new THREE.Vector3();
+        collisionCube.getWorldPosition(origin);
 
-        for (const interactiveObject of this.#interactiveObjects) {
-            // Compute each interactive object bounding box in world space
-            this.#tempBox.setFromObject(interactiveObject);
+        for (const raycaster of this.#collisionRaycasters) {
+            // Update the ray origin to the current avatar world position
+            raycaster.ray.origin.copy(origin);
 
-            if (this.#playerBox.intersectsBox(this.#tempBox)) {
-                console.log('hay colision con', interactiveObject.name);
+            // intersectObjects checks all interactiveObjects and their descendants (true).
+            // Because raycaster.far = collisionThreshold, only hits within that distance are returned,
+            // meaning we only detect surfaces that are actually close — not objects the avatar is inside.
+            const hits = raycaster.intersectObjects(this.#interactiveObjects, true);
+
+            if (hits.length > 0) {
+                console.log('hay colision con', hits[0].object.name, '| distancia:', hits[0].distance.toFixed(4));
             }
         }
     };
