@@ -52,15 +52,13 @@ inputNameLabel.addEventListener('keyup', (e) => {
 });
 
 // Listen for the custom event dispatched from floors option created in DomManipulate.js
-document.addEventListener('floorSelected', async (event) => {
-
-    const { plantName } = event.detail;
+window.init3DScene = async (floorName) => {
 
     const mainScene = new Scene3D();
 
     renderContent.appendChild(mainScene.getRenderer().domElement);
 
-    const floorAdded = await mainScene.addFloorToScene(plantName);
+    const floorAdded = await mainScene.addFloorToScene(floorName);
 
     const avatarAdded = await mainScene.addAvatarToScene(AVATARBODYCONFIG.current, AVATARHEADCONFIG.current, userName);
 
@@ -69,10 +67,9 @@ document.addEventListener('floorSelected', async (event) => {
         camera: mainScene.getCamera(),
         mixer: mainScene.getAvatarMixerConfig()
     });
+    
     usercontroller.enableControls();
-
-    // Conectar UserControls con Scene3D para que las colisiones bloqueen
-    // el movimiento en la dirección del impacto (física direccional).
+    
     mainScene.setUserControls(usercontroller);
 
     mainScene.animScene();
@@ -80,14 +77,13 @@ document.addEventListener('floorSelected', async (event) => {
     timeline.tweenTo('openApp');
 
     window.scene = mainScene.getScene();
-});
+};
 
 window.animTimeline = (step) => {
     if(step === 'back') {
         timeline.reverse();
         return;
     }
-
     timeline.tweenTo(step);
 }
 

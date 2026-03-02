@@ -3,17 +3,11 @@
     src: url('/fuentes/PressStart2P-Regular.ttf') format('truetype')
 }
 
+/* --------MAIN STYLES ------ */
+
 html,body {
 	margin: 0;
 	padding: 0;
-	overflow: hidden;
-	width:100%;
-	height:100%;
-  background-color: #5BBEFF;
-  -webkit-transition: all ease-out 2s;
-  -moz-transition: all ease-out 2s;
-  -o-transition: all  ease-out 2s;
-  transition: all ease-out 2s;
   font-family: bbvaweb;
 }
 
@@ -29,204 +23,220 @@ html,body {
   transition: all ease-out 3s;
 }
 
-.mainScreen{
-  width: 100%;
-  height: 100%;
+.mainScreen {
   position: absolute;
-  top: 0px;
-  left: 0px;
-  padding: 20px 10px;
+  width: 100vw;
+  height: 100vh;
   background-color: #222222;
-}
-
-.clanLogo{
-  position: absolute;
-  width: 90px;
-  top: 30px;
-  right: 30px;
-  cursor: pointer;
-}
-
-.logosBox{
-  position: absolute;
-  width: 220px;
-  top: 0;
-  bottom: 100px;
-  left: 0;
-  right: 0;
-  margin: auto;
-  height: 150px;
-}
-
-.hotelLogo, .nextLogo {
-  width: 100%;
-}
-
-.startButon {
-  width: 100%;
-  margin-top: 25px;
-  background-color: #00cdce;
-  color: white;
-  cursor: pointer;
-  text-align: center;
-  padding: 20px 0px;
-  font-size: 16px;
+  overflow: hidden;
 }
 
 .stepTitle{
   color: white;
   font-size: 16px;
-  padding: 20px 0px;
+  margin-bottom: 2rem;
 }
 
-.avatarConfigBox, .officeSelectorMenu, .avatarNamegBox {
+.avatarNameBox, .avatarConfigBox, .officeSelectorBox {
   position: absolute;
-  width: 500px;
+  width: 100%;
+  height: 100%;
   top: 0;
-  bottom: 0;
   left: 2500px;
-  right: 0;
-  margin: auto;
-  height: 70%;
-}
-.imputNameBox {
-  width: 100%;
-  height: 80%;
-}
-.imputNameBox input[type=text] {
-  width: 100%;
-  padding: 12px 20px;
-  margin: 30px 0 15px 0;
-  box-sizing: border-box;
-  background-color: #222222;
-  border: 2px solid #00cdce;	
-  font-family: bbvaweb;
-  color: white;
-  -webkit-transition: background-color 0.4s ease-in-out;
-  transition: background-color 0.4s ease-in-out;
 }
 
-.imputNameBox input[type=text]:focus {
-  outline: none;
-  background-color: #00cece4b;
-}
-.userNameAdvice {
-  font-size: 10px;
-  color: #ff6c6c;
-  padding-left: 5px;
-}
+/* -------- SPLASH SCREEN STYLE ------ */
 
-.avatarConfig {
-  width: 100%;
-  height: 80%;
-  background-color: #58bdfe;
-  padding: 1px;
-  position: relative;
-}
-
-.avatarconfigSelectSection{
-  width: 100%;
-  height: 50%;
-  background-color: #222222;
-  position: relative;
-  float: left;
-}
-
-.leftSelectorArrow{
-  animation: breathing 2s ease-out infinite normal;
-  position: absolute;
-  left: 10px;
-  cursor: pointer;
-  width: 20%;
-  height: 100%;
-}
-
-.selectorImage{
+.logosBox {
   position: absolute;
   top: 0;
-  bottom: 0;
   left: 0;
-  right: 0;
-  margin: auto;
-  height: 70%;
-}
-
-.rightSelectorArrow{
-  animation: breathing 2s ease-out infinite normal;
-  position: absolute;
-  right: 10px;
-  cursor: pointer;
-  width: 20%;
-  height: 100%;
-}
-
-.rightSelectorArrow > img, .leftSelectorArrow > img{
   width: 100%;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  margin: auto;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-.plantSelectButton{
-  text-align: center;
-  padding: 5px;
+.hotelLogo, .nextLogo {
+  width: 20%;
+}
+
+.startButon {
+  width: 20%;
+  margin-top: 3rem;
   background-color: #00cdce;
   color: white;
   cursor: pointer;
-  margin-bottom: 10px;
-  position: relative;
-  width: 43%;
-  float: left;
-  margin-right: 3%;
-  height: 35%;
-  font-size: 12px;
-  padding-top: 16px;
-  opacity: 0.5;
-  transition: opacity 0.2s linear;
+  text-align: center;
+  padding: 20px;
+  font-size: 1rem;
 }
 
-.manoterasStyle {
+/* -------- AVATAR NAME SCREEN STYLE ------ */
+
+.avatarNameBox {
+  display: grid;
+  justify-items: center;
+  grid-template-rows: auto 50%;
+}
+
+.imputNameBox {
+  width: 40%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  flex-direction: column;
+  gap: 1rem;
+
+  input[type=text] {
+    width: 100%;
+    padding: 12px 20px;
+    box-sizing: border-box;
+    background-color: #222222;
+    border: 2px solid #00cdce;	
+    font-family: bbvaweb;
+    color: white;
+    -webkit-transition: background-color 0.4s ease-in-out;
+    transition: background-color 0.4s ease-in-out;
+  }
+
+  input[type=text]:focus {
+    outline: none;
+    background-color: #00cece4b;
+  }
+}
+
+.userNameAdvice {
+  font-size: 0.8rem;
+  color: #ff6c6c;
+}
+
+/* -------- AVATAR CONFIG SCREEN STYLE ------ */
+
+.avatarConfigBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5rem;
+}
+
+.avatarConfig {
+  width: 40%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatarconfigSelectSection{
+  background-color: #0088ff;
+  width: 100%;
+  background-color: #222222;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+
+  .selectorImage{
+    height: 150px;
+  }
+}
+
+.leftSelectorArrow, .rightSelectorArrow {
+  animation: breathing 2s ease-out infinite normal;
+  img {
+    width: 50px;
+  }
+}
+
+/* -------- FLOOR SELECTOR SCREEN STYLE ------ */
+
+.officeSelectorBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4rem;
+
+  .navigateButtons {
+    width: 50%;
+  }
+}
+
+.oficeSelectorMasonry {
+  width: 50%;
+  display: grid;
+  justify-items: center;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.floorSelectorButton {
+  background-color: #00cdce;
+  cursor: pointer;
+  width: 150px;
+  height: 200px;
+  opacity: 0.5;
+  transition: opacity 0.2s linear;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 1rem;
+  box-sizing: border-box;
+  
+  span {
+    color: white;
+    font-size: 12px;
+    opacity: 1;
+  }
+}
+
+.floorSelectorButton:hover {
+  opacity: 1;
+}
+
+.manoterasBg {
   background-image: url("../images/manoterasIcon.png");
   background-size: cover;
   background-repeat: no-repeat;
 }
 
-.tablas2-P0Style {
+.tablas2Bg {
   background-image: url("../images/p0Icon.png");
   background-size: cover;
   background-repeat: no-repeat;
 }
 
-.tablas2-P1Style {
+.tablas2P1Bg {
   background-image: url("../images/p1Icon.png");
   background-size: cover;
   background-repeat: no-repeat;
 }
 
-.tablas2-P2Style {
+.tablas2P2Bg {
   background-image: url("../images/p2Icon.png");
   background-size: cover;
   background-repeat: no-repeat;
 }
 
-.plantSelectButton:hover {
-  opacity: 1;
-}
-
-.navigateButtons{
-  width: 100%;
+.navigateButtons {
+  width: 40%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .navigateBackButton, .navigateContinueButton{
-  width: 45%;
   background-color: #2ecbcc;
   color: white;
   text-align: center;
   font-size: 12px;
   padding: 16px 0px;
-  margin-top: 10px;
   cursor: pointer;
+  min-width: 200px;
 }
 
 .navigateBackButton::before{
@@ -251,17 +261,11 @@ html,body {
   margin-left: 10%;
 }
 
-.navigateContinueButton{
-  float: right;
-}
-
 .navigateContinueButton[disabled="true"] {
   background-color: #cccbcc;
 }
 
-.navigateBackButton {
-  float: left;
-}
+/* -------- 3D UI ELEMENTS STYLE ------ */
 
 .minButton{
   position: absolute;

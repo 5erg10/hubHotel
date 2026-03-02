@@ -12,9 +12,9 @@
       <div id="logosBox" class="logosBox">
           <img id="nextLogo" class="nextLogo" src="./images/hub_logo_solo.png" alt="nextLogo"></img>
           <img id="hotelLogo" class="hotelLogo" src="./images/hotel_logo_solo.png" alt="hotelLogo"></img>
-          <div onclick="animTimeline('configName')" class="startButon">Comenzar</div>
+          <div id="startButton" class="startButon" onclick="animTimeline('configName')">Comenzar</div>
       </div>
-      <div id="avatarNamegBox" class="avatarNamegBox">
+      <div id="avatarNameBox" class="avatarNameBox">
           <div class="imputNameBox">
               <label class="stepTitle" for="inputNameLabel">Introduce un nombre para tu avatar:</label>
               <input id="inputNameLabel" type="text" maxlength="12"/>
@@ -28,24 +28,49 @@
       <div id="avatarConfigBox" class="avatarConfigBox">
           <div class="stepTitle">Personaliza tu avatar:</div>
           <div class="avatarConfig">
-              <div class="avatarconfigSelectSection">
-                  <div onclick="setAvatarConfig('head', -1)" class="leftSelectorArrow"><img src="images/arrowPixel.png" alt="flecha de selector de head izquierda"/></div>
-                  <div><img id="selectorHeadBox" class="selectorImage" src="images/avatarHeads/head_1.png" alt="selector de head"/></div>
-                  <div onclick="setAvatarConfig('head', 1)" class="rightSelectorArrow"><img src="images/arrowPixelRight.png" alt="flecha de selector de head derecha"/></div>
-              </div>
-              <div class="avatarconfigSelectSection">
-                  <div  onclick="setAvatarConfig('body', -1)" class="leftSelectorArrow"><img src="images/arrowPixel.png"  alt="flecha de selector izquierda"/></div>
-                  <div><img id="selectorBodyBox" class="selectorImage" src="images/avatarBodies/body_1.png" alt="selector de tipo de body"/></div>
-                  <div  onclick="setAvatarConfig('body', 1)" class="rightSelectorArrow"><img src="images/arrowPixelRight.png" alt="Flecha de selector derecha"/></div>
-              </div>
+                <div class="avatarconfigSelectSection">
+                    <div onclick="setAvatarConfig('head', -1)" class="leftSelectorArrow">
+                        <img src="images/arrowPixel.png" alt="flecha de selector de head izquierda"/>
+                    </div>
+                    <img id="selectorHeadBox" class="selectorImage" src="images/avatarHeads/head_1.png" alt="selector de head"/>
+                    <div onclick="setAvatarConfig('head', 1)" class="rightSelectorArrow">
+                        <img src="images/arrowPixelRight.png" alt="flecha de selector de head derecha"/>
+                    </div>
+                </div>
+                <div class="avatarconfigSelectSection">
+                    <div onclick="setAvatarConfig('body', -1)" class="leftSelectorArrow">
+                        <img src="images/arrowPixel.png"  alt="flecha de selector izquierda"/>
+                    </div>
+                    <img id="selectorBodyBox" class="selectorImage" src="images/avatarBodies/body_1.png" alt="selector de tipo de body"/>
+                    <div onclick="setAvatarConfig('body', 1)" class="rightSelectorArrow">
+                        <img src="images/arrowPixelRight.png" alt="Flecha de selector derecha"/>
+                    </div>
+                </div>
           </div>
           <div class="navigateButtons">
               <div onclick="animTimeline('back')" class="navigateBackButton">Volver</div>
               <div onclick="animTimeline('selectOffice')" class="navigateContinueButton">Continuar</div>
           </div>
       </div>
-      <div id="officeSelectorMenu" class="officeSelectorMenu">
-          <div onclick="animTimeline('back')" class="navigateBackButton">Volver</div>
+      <div id="officeSelectorBox" class="officeSelectorBox">
+            <div class="stepTitle">Selecciona una planta:</div>
+            <div id="oficeSelectorMasonry" class="oficeSelectorMasonry">
+                <div class="floorSelectorButton manoterasBg" onclick="init3DScene('manoteras')">
+                    <span>Manoteras</span>
+                </div>
+                <div class="floorSelectorButton tablas2Bg" onclick="init3DScene('tablas2-P0')">
+                    <span>Tablas 2 P-0</span>
+                </div>
+                <div class="floorSelectorButton tablas2P1Bg" onclick="init3DScene('tablas2-P1')">
+                    <span>Tablas 2 p-1</span>
+                </div>
+                <div class="floorSelectorButton tablas2P2Bg" onclick="init3DScene('tablas2-P2')">
+                    <span>Tablas 2 p-2</span>
+                </div>
+            </div>
+            <div class="navigateButtons">
+                <div class="navigateBackButton" onclick="animTimeline('back')">Volver</div>
+            </div>
       </div>
     </div>
     <div id="renderContent"></div>

@@ -2,22 +2,10 @@ import * as THREE from 'three';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/Addons.js';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 // Objetos huecos: el avatar se mueve dentro de ellos, por lo que un Box3
 // siempre intersectaría. Para estos usamos raycasters cortos en lugar de Box3.
-const HOLLOW_OBJECTS = ['interactparedes', 'interactcristaleras'];
-
-// Las 4 direcciones de movimiento del avatar mapeadas a su vector world-space.
-// Deben coincidir con los ejes usados en UserControls#applyMovement.
-// forward = X negativo, backward = X positivo, left = Z positivo, right = Z negativo
-const MOVE_DIRECTIONS = {
-    forward:  new THREE.Vector3(-1, 0,  0),
-    backward: new THREE.Vector3( 1, 0,  0),
-    left:     new THREE.Vector3( 0, 0,  1),
-    right:    new THREE.Vector3( 0, 0, -1),
-};
-
+const HOLLOW_OBJECTS = ['interactparedes', 'interactcristaleras', 'interactcomedor'];
 export class Scene3D {
 
     #floor;
@@ -38,10 +26,6 @@ export class Scene3D {
     #hollowRaycasters;
     #collisionThreshold = 0.05;
 
-    // Raycasters con mayor alcance para detectar si el avatar YA SE ALEJÓ de una superficie.
-    // Mismo umbral + pequeño margen para que el desbloqueo ocurra antes de separarse del todo.
-    #releaseThreshold = 0.08;
-
     constructor() {
         this.#interactiveObjects = [];
         this.#playerBox = new THREE.Box3();
@@ -61,14 +45,10 @@ export class Scene3D {
         };
 
         const rayDirections = [
-            new THREE.Vector3( 1,  0,  0),
-            new THREE.Vector3(-1,  0,  0),
-            new THREE.Vector3( 0,  0,  1),
-            new THREE.Vector3( 0,  0, -1),
-            new THREE.Vector3( 1,  0,  1).normalize(),
-            new THREE.Vector3(-1,  0,  1).normalize(),
-            new THREE.Vector3( 1,  0, -1).normalize(),
-            new THREE.Vector3(-1,  0, -1).normalize(),
+            new THREE.Vector3( 1,  0,  0), // derecha
+            new THREE.Vector3(-1,  0,  0), // izquierda
+            new THREE.Vector3( 0,  0,  1), // arriba
+            new THREE.Vector3( 0,  0, -1) // abajo
         ];
 
         this.#hollowRaycasters = rayDirections.map((dir) => {
@@ -106,9 +86,7 @@ export class Scene3D {
     getFloor()    { return this.#floor; };
     getAvatar()   { return this.#avatar; };
     getAvatarMixerConfig() { return this.#avatarAnimConfig; };
-
-    // Conecta UserControls para que #checkAvatarCollision pueda bloquear/desbloquear direcciones.
-    // Se llama desde main.js después de crear ambas instancias.
+    
     setUserControls(userControls) {
         this.#userControls = userControls;
     };
@@ -137,6 +115,7 @@ export class Scene3D {
                             const isHollow = HOLLOW_OBJECTS.some(h => normalizedName.includes(h));
 
                             if (isHollow) {
+                                plantObject.material.side = THREE.DoubleSide;
                                 plantObject.userData.collisionType = 'hollow';
                             } else {
                                 plantObject.userData.collisionType = 'solid';
@@ -249,23 +228,6 @@ export class Scene3D {
         });
     };
 
-    // Dado un vector dirección world-space del impacto, devuelve qué dirección
-    // de movimiento del avatar corresponde ('forward'|'backward'|'left'|'right'|null).
-    // Se elige la dirección cuyo vector tenga mayor dot product con el impacto.
-    #worldVectorToMoveDirection = (hitVector) => {
-        let bestDir = null;
-        let bestDot = 0.3; // umbral mínimo para evitar falsos positivos en diagonales
-
-        for (const [dir, vec] of Object.entries(MOVE_DIRECTIONS)) {
-            const dot = hitVector.dot(vec);
-            if (dot > bestDot) {
-                bestDot = dot;
-                bestDir = dir;
-            }
-        }
-        return bestDir;
-    };
-
     #checkAvatarCollision = () => {
         const collisionCube = this.#avatar.children.find(child => child.name === this.#userName);
         if (!collisionCube || this.#interactiveObjects.length === 0) return;
@@ -283,43 +245,24 @@ export class Scene3D {
         const solidObjects = this.#interactiveObjects.filter(o => o.userData.collisionType === 'solid');
         for (const obj of solidObjects) {
             if (this.#playerBox.intersectsBox(obj.userData.collisionBox)) {
-                // Calcular el vector del centro del objeto al avatar para saber la dirección del impacto
-                const objCenter = new THREE.Vector3();
-                obj.userData.collisionBox.getCenter(objCenter);
-                const hitVector = new THREE.Vector3().subVectors(avatarPos, objCenter).normalize();
-                hitVector.y = 0;
-
-                const dir = this.#worldVectorToMoveDirection(hitVector);
-                if (dir) activeCollisions.add(dir);
+                console.log('collision object: ', obj.name);
             }
         }
 
         // --- Objetos HUECOS: raycasting lateral ---
         const hollowObjects = this.#interactiveObjects.filter(o => o.userData.collisionType === 'hollow');
-
         if (hollowObjects.length > 0) {
+            // console.log('hollow rycaster: ', this.#hollowRaycasters);
             for (const raycaster of this.#hollowRaycasters) {
                 raycaster.ray.origin.copy(avatarPos);
                 const hits = raycaster.intersectObjects(hollowObjects, true);
 
                 if (hits.length > 0) {
-                    // La dirección del raycaster apunta hacia el objeto → el avatar
-                    // se mueve en esa dirección → hay que bloquearla
-                    const dir = this.#worldVectorToMoveDirection(raycaster.ray.direction);
-                    if (dir) activeCollisions.add(dir);
+                    console.log('colision hollow object: ', hits[0].object.name);
                 }
             }
         }
 
-        // --- Sincronizar bloqueos con UserControls ---
         if (!this.#userControls) return;
-
-        for (const dir of Object.keys(MOVE_DIRECTIONS)) {
-            if (activeCollisions.has(dir)) {
-                this.#userControls.blockDirection(dir);
-            } else {
-                this.#userControls.unblockDirection(dir);
-            }
-        }
     };
 }

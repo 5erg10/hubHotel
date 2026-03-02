@@ -1,6 +1,7 @@
 export class UserControls {
 
     #loopId = null;
+    #keysActive = new Set();
 
     constructor({avatar, camera, mixer}) {
 
@@ -9,7 +10,7 @@ export class UserControls {
         this.animConfig = mixer;
         this.moveSpeed = 0.01;
 
-        this.keysActive = new Set();
+        this.#keysActive = new Set();
 
         this.move = {
             forward:  { block: false },
@@ -35,6 +36,10 @@ export class UserControls {
         if (this.move[dir]) this.move[dir].block = false;
     };
 
+    getMainKeyActive() {
+        return this.#keysActive;
+    }
+
     #activeMixerAnimation = (action) => {
         const BodyAnimation = this.animConfig.body.mixer.clipAction(this.animConfig.body.animations.find(a => a.name === this.action));
         const HeadAnimation = this.animConfig.head.mixer.clipAction(this.animConfig.head.animations.find(a => a.name === this.action));
@@ -51,7 +56,7 @@ export class UserControls {
     };
 
     #applyMovement = () => {
-        const keys = this.keysActive;
+        const keys = this.#keysActive;
         if (keys.size === 0) return;
 
         let dx = 0, dz = 0;
@@ -88,7 +93,7 @@ export class UserControls {
     };
 
     stopMovement = () => {
-        this.keysActive.clear();
+        this.#keysActive.clear();
         this.#activeMixerAnimation('stop');
         this.action = "stand";
         this.move.forward.block  = false;
@@ -101,13 +106,13 @@ export class UserControls {
 
     #onKeyDown = (event) => {
         if (event.repeat) return;
-        this.keysActive.add(event.code);
+        this.#keysActive.add(event.code);
     };
 
     #onKeyUp = (event) => {
-        this.keysActive.delete(event.code);
+        this.#keysActive.delete(event.code);
         const movementKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','Space'];
-        if (!movementKeys.some(k => this.keysActive.has(k))) {
+        if (!movementKeys.some(k => this.#keysActive.has(k))) {
             this.stopMovement();
         }
     };
