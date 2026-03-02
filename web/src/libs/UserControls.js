@@ -1,13 +1,14 @@
 export class UserControls {
+
+    #loopId = null;
+
     constructor({avatar, camera, mixer}) {
 
         this.avatar = avatar;
         this.camera = camera;
         this.animConfig = mixer;
-        this.moveSpeed = 0.02;
+        this.moveSpeed = 0.01;
 
-        // Set de teclas actualmente pulsadas. El movimiento se aplica cada frame
-        // en el loop interno, no en el evento keydown, eliminando el key-repeat delay del SO.
         this.keysActive = new Set();
 
         this.move = {
@@ -22,18 +23,14 @@ export class UserControls {
         this.#loopId = null;
     };
 
-    #loopId = null;
-
     getDirection() { return this.direction; };
+
     getAction()    { return this.action; };
 
-    // Bloquea una dirección específica. Llamado desde Scene3D cuando detecta colisión.
-    // dir: 'forward' | 'backward' | 'left' | 'right'
     blockDirection = (dir) => {
         if (this.move[dir]) this.move[dir].block = true;
     };
 
-    // Desbloquea una dirección. Llamado desde Scene3D cuando el avatar ya no colisiona en esa dirección.
     unblockDirection = (dir) => {
         if (this.move[dir]) this.move[dir].block = false;
     };
