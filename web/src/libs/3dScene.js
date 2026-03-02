@@ -20,14 +20,23 @@ export class Scene3D {
     #playerBox;
     #tempBox;
 
-    // Collision raycasters: 8 directions at ground level (cardinal + diagonal)
-    // Reused each frame to avoid garbage collection pressure
+    // Collision raycasters reused every frame to avoid GC pressure.
+    // 8 horizontal directions × 3 heights = 24 raycasters total.
+    // Multiple scan heights are needed because objects like tables have
+    // geometry only at specific Y levels (legs at ~0.06, tabletop at ~0.75).
+    // Walls/panels are tall so a single height sufficed for them, but
+    // compact furniture requires scanning at several heights to guarantee a hit.
     #collisionRaycasters;
 
-    // Max distance in world units at which a ray hit counts as a real collision.
-    // Should be slightly larger than half the collisionCube side (0.06 / 2 = 0.03)
-    // so it triggers just as the cube surface touches the object surface.
+    // Max distance (world units) at which a ray hit registers as a collision.
+    // Slightly larger than half the collisionCube side (0.06/2 = 0.03).
     #collisionThreshold = 0.05;
+
+    // Y offsets (relative to avatar root) at which horizontal rays are cast.
+    // Low  = patas de mesas/sillas (~suelo)
+    // Mid  = zona media del cuerpo del avatar
+    // High = encimeras / tableros de mesa
+    #scanHeights = [0.06, 0.5, 0.9];
 
     constructor() {
         // Set up global variables
@@ -56,26 +65,30 @@ export class Scene3D {
             }
         };
 
-        // Build the 8 directional raycasters once and reuse them every frame.
-        // All rays point outward horizontally (Y=0) so vertical geometry like
-        // walls and glass panels are properly detected without floor interference.
+        // 8 horizontal directions × 3 scan heights = 24 raycasters
         const rayDirections = [
-            new THREE.Vector3( 1,  0,  0),  // E
-            new THREE.Vector3(-1,  0,  0),  // W
-            new THREE.Vector3( 0,  0,  1),  // S
-            new THREE.Vector3( 0,  0, -1),  // N
-            new THREE.Vector3( 1,  0,  1).normalize(),  // SE
-            new THREE.Vector3(-1,  0,  1).normalize(),  // SW
-            new THREE.Vector3( 1,  0, -1).normalize(),  // NE
-            new THREE.Vector3(-1,  0, -1).normalize(),  // NW
+            new THREE.Vector3( 1,  0,  0),               // E
+            new THREE.Vector3(-1,  0,  0),               // W
+            new THREE.Vector3( 0,  0,  1),               // S
+            new THREE.Vector3( 0,  0, -1),               // N
+            new THREE.Vector3( 1,  0,  1).normalize(),   // SE
+            new THREE.Vector3(-1,  0,  1).normalize(),   // SW
+            new THREE.Vector3( 1,  0, -1).normalize(),   // NE
+            new THREE.Vector3(-1,  0, -1).normalize(),   // NW
         ];
 
-        this.#collisionRaycasters = rayDirections.map((dir) => {
-            const raycaster = new THREE.Raycaster();
-            raycaster.far = this.#collisionThreshold;
-            raycaster.ray.direction.copy(dir);
-            return raycaster;
-        });
+        this.#collisionRaycasters = [];
+
+        for (const height of this.#scanHeights) {
+            for (const dir of rayDirections) {
+                const raycaster = new THREE.Raycaster();
+                raycaster.far = this.#collisionThreshold;
+                raycaster.ray.direction.copy(dir);
+                // Store the Y offset so we can position each ray at the right height each frame
+                raycaster._scanHeight = height;
+                this.#collisionRaycasters.push(raycaster);
+            }
+        }
 
         // Set up frame size
         this.#with = window.innerWidth;
@@ -274,23 +287,37 @@ export class Scene3D {
         const collisionCube = this.#avatar.children.find(child => child.name === this.#userName);
         if (!collisionCube || this.#interactiveObjects.length === 0) return;
 
-        // Get the collisionCube world position to use as the ray origin.
-        // We update the world matrix explicitly so Three.js r150+ lazy updates don't cause stale positions.
-        collisionCube.updateWorldMatrix(true, false);
-        const origin = new THREE.Vector3();
-        collisionCube.getWorldPosition(origin);
+        // Get the avatar's world position (XZ base, Y=0 at avatar root).
+        // We apply the scan heights manually per raycaster below.
+        this.#avatar.updateWorldMatrix(true, false);
+        const avatarWorldPos = new THREE.Vector3();
+        this.#avatar.getWorldPosition(avatarWorldPos);
+
+        // Track which interactive objects have already triggered this frame
+        // so we don't log/callback the same object multiple times per frame.
+        const alreadyHit = new Set();
 
         for (const raycaster of this.#collisionRaycasters) {
-            // Update the ray origin to the current avatar world position
-            raycaster.ray.origin.copy(origin);
+            // Position each ray at the avatar XZ center + the ray's own scan height offset
+            raycaster.ray.origin.set(
+                avatarWorldPos.x,
+                avatarWorldPos.y + raycaster._scanHeight,
+                avatarWorldPos.z
+            );
 
-            // intersectObjects checks all interactiveObjects and their descendants (true).
-            // Because raycaster.far = collisionThreshold, only hits within that distance are returned,
-            // meaning we only detect surfaces that are actually close — not objects the avatar is inside.
             const hits = raycaster.intersectObjects(this.#interactiveObjects, true);
 
             if (hits.length > 0) {
-                console.log('hay colision con', hits[0].object.name, '| distancia:', hits[0].distance.toFixed(4));
+                // Walk up to the direct child of #interactiveObjects to get the named parent
+                let hitObject = hits[0].object;
+                while (hitObject.parent && !this.#interactiveObjects.includes(hitObject)) {
+                    hitObject = hitObject.parent;
+                }
+
+                if (!alreadyHit.has(hitObject)) {
+                    alreadyHit.add(hitObject);
+                    console.log('hay colision con', hitObject.name, '| altura:', raycaster._scanHeight, '| distancia:', hits[0].distance.toFixed(4));
+                }
             }
         }
     };
