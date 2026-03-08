@@ -29,6 +29,9 @@ export const createAnimTimeline = () => {
     .addLabel("selectOffice")
     .to("#mainScreen", {duration: animVelocity*2, left: -3000, ease: Back.easeOut.config(1.4)})
     .addLabel("openApp");
-
     return tl;
+}
+
+export const showAdditionalInfo = () => {
+    
 }

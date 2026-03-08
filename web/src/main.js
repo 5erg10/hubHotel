@@ -1,4 +1,3 @@
-import './styles/style.css';
 import { Scene3D } from './libs/3dScene.js';
 import { animateLogo, createAnimTimeline } from './libs/animations.js';
 import { checkIfUserExists } from './libs/login.js';
@@ -24,7 +23,6 @@ const AVATARBODYCONFIG = {
 
 animateLogo();
 
-// name input logic controls enabling of continue button and advice message depending on the validity of the input name, also checks if the user exists in the database with a debounce of 500ms to avoid excessive calls to the backend while the user is typing
 inputNameLabel.addEventListener('keyup', (e) => {
     clearTimeout(inputTimeout);
     inputTimeout = setTimeout(async () => {
@@ -51,7 +49,6 @@ inputNameLabel.addEventListener('keyup', (e) => {
     }, 500);
 });
 
-// Listen for the custom event dispatched from floors option created in DomManipulate.js
 window.init3DScene = async (floorName) => {
 
     const mainScene = new Scene3D();

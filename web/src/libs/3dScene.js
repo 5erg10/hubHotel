@@ -3,9 +3,7 @@ import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/Addons.js';
 
-// Objetos huecos: el avatar se mueve dentro de ellos, por lo que un Box3
-// siempre intersectaría. Para estos usamos raycasters cortos en lugar de Box3.
-const HOLLOW_OBJECTS = ['interactparedes', 'interactcristaleras', 'interactcomedor'];
+const HOLLOW_OBJECTS = ['interactparedes', 'interactcristaleras'];
 export class Scene3D {
 
     #floor;
@@ -19,15 +17,12 @@ export class Scene3D {
     #interactiveObjects;
     #userName;
     #playerBox;
-
-    // Referencia a UserControls para notificar bloqueos/desbloqueos de dirección
     #userControls = null;
 
-    #hollowRaycasters;
-    #collisionThreshold = 0.05;
-
     constructor() {
+
         this.#interactiveObjects = [];
+
         this.#playerBox = new THREE.Box3();
         this.#userName;
 
@@ -44,20 +39,6 @@ export class Scene3D {
             head: { mixer: null, animations: null }
         };
 
-        const rayDirections = [
-            new THREE.Vector3( 1,  0,  0), // derecha
-            new THREE.Vector3(-1,  0,  0), // izquierda
-            new THREE.Vector3( 0,  0,  1), // arriba
-            new THREE.Vector3( 0,  0, -1) // abajo
-        ];
-
-        this.#hollowRaycasters = rayDirections.map((dir) => {
-            const raycaster = new THREE.Raycaster();
-            raycaster.far = this.#collisionThreshold;
-            raycaster.ray.direction.copy(dir);
-            return raycaster;
-        });
-
         this.#with = window.innerWidth;
         this.#height = window.innerHeight;
 
@@ -66,7 +47,7 @@ export class Scene3D {
         this.#camera.position.set(1, 2, 0);
 
         this.#scene = new THREE.Scene();
-        this.ambientLight = new THREE.AmbientLight(0xffffff, 5);
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 7);
         this.ambientLight.name = "mainLight";
         this.#scene.add(this.ambientLight);
 
@@ -114,13 +95,9 @@ export class Scene3D {
                             const normalizedName = plantObject.name.toLowerCase();
                             const isHollow = HOLLOW_OBJECTS.some(h => normalizedName.includes(h));
 
-                            if (isHollow) {
-                                plantObject.material.side = THREE.DoubleSide;
-                                plantObject.userData.collisionType = 'hollow';
-                            } else {
-                                plantObject.userData.collisionType = 'solid';
-                                plantObject.userData.collisionBox = new THREE.Box3().setFromObject(plantObject);
-                            }
+                            if (isHollow) plantObject.material.side = THREE.DoubleSide;
+
+                            plantObject.userData.collisionBox = new THREE.Box3().setFromObject(plantObject);
 
                             this.#interactiveObjects.push(plantObject);
                         }
@@ -181,7 +158,7 @@ export class Scene3D {
                     body: { mixer: new THREE.AnimationMixer(bodymodel), animations: bodyGltf.animations }
                 });
 
-                const collisionCubeGeometry = new THREE.BoxGeometry(0.06, 0.06, 0.06);
+                const collisionCubeGeometry = new THREE.BoxGeometry(0.06, 0.06, 0.085);
                 const collisionCubeMaterial = new THREE.MeshLambertMaterial({color: 0xff2255});
                 const collisionCube = new THREE.Mesh(collisionCubeGeometry, collisionCubeMaterial);
                 collisionCube.name = userName;
@@ -232,34 +209,15 @@ export class Scene3D {
         const collisionCube = this.#avatar.children.find(child => child.name === this.#userName);
         if (!collisionCube || this.#interactiveObjects.length === 0) return;
 
-        // Conjunto de direcciones con colisión activa este frame
-        const activeCollisions = new Set();
-
-        // --- Objetos SÓLIDOS: Box3 vs Box3 ---
         this.#playerBox.setFromObject(collisionCube);
 
         collisionCube.updateWorldMatrix(true, false);
         const avatarPos = new THREE.Vector3();
         collisionCube.getWorldPosition(avatarPos);
 
-        const solidObjects = this.#interactiveObjects.filter(o => o.userData.collisionType === 'solid');
-        for (const obj of solidObjects) {
+        for (const obj of this.#interactiveObjects) {
             if (this.#playerBox.intersectsBox(obj.userData.collisionBox)) {
                 console.log('collision object: ', obj.name);
-            }
-        }
-
-        // --- Objetos HUECOS: raycasting lateral ---
-        const hollowObjects = this.#interactiveObjects.filter(o => o.userData.collisionType === 'hollow');
-        if (hollowObjects.length > 0) {
-            // console.log('hollow rycaster: ', this.#hollowRaycasters);
-            for (const raycaster of this.#hollowRaycasters) {
-                raycaster.ray.origin.copy(avatarPos);
-                const hits = raycaster.intersectObjects(hollowObjects, true);
-
-                if (hits.length > 0) {
-                    console.log('colision hollow object: ', hits[0].object.name);
-                }
             }
         }
 
