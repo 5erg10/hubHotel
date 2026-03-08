@@ -72,7 +72,6 @@ export class UserControls {
         if (keys.size === 0) return;
 
         this.#RotateMovement();
-        console.log('blockDirection: ', this.#movementBlocked);
 
         if (this.#movementBlocked) return;
 

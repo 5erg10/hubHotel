@@ -53,26 +53,37 @@ server.listen(port,() => {
 app.use('/', apiRoutes);
 
 secIO.on('connection', (socketIO) => {
-    socketIO.on('userLogOut', (data) => {
-        secIO.emit("logOutUser", data);
+
+    socketIO.on("disconnect", () => {
+        try {
+            const user = socketIO.data.user;
+            console.log("Usuario desconectado: ", user);
+            if (user) {
+                secIO.emit("logOutUser", user);
+                sessionController.removeUser(user);
+            }
+        } catch(err) {
+            console.log('error on remove user: ', err);
+        }
     });
+
     socketIO.on('loginUser', (data) => {
-        sessionController.addNewUser(data);
+        console.log('user login: ', data);
+        socketIO.data.user = data;
         secIO.emit("newUserLogin", sessionController.recoverUsers());
     });
+
     socketIO.on('StatusUser', (data) => {
         secIO.emit("refreshUsers", data);
         sessionController.refreshUserPosition(data);
     });
+
     socketIO.on('publicChat', (data) =>  {
         secIO.sockets.emit('publicChatResponses', data);
     });
+
     socketIO.on('privateChat', (data) =>  {
         secIO.sockets.emit(data.receiver, data);
-    });
-    socketIO.on('sendLogOutUser', (data) => {
-        secIO.emit("logOutUser", data);
-        sessionController.removeUser(data);
     });
 });
 

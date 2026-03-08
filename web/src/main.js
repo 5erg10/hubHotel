@@ -1,10 +1,10 @@
 import { Scene3D } from './libs/3dScene.js';
 import { animateLogo, createAnimTimeline } from './libs/animations.js';
 import { UserControls } from './libs/UserControls.js';
-import { SocketConnection } from './libs/Sockets.js';
+import { SocketConnection } from './libs/sockets.js';
 import { DataSource } from './libs/dataSources.js';
 
-let inputTimeout, userName, usersList;
+let inputTimeout, userName, office, usersList;
 const saveUserDataOnLocalStorage = false;
 
 const timeline = createAnimTimeline();
@@ -46,6 +46,7 @@ const initApp = async () => {
     }
 
     usersList = await DataSource.getUserList();
+
     inputNameLabel.disabled = false;
     userNameAdvice.innerHTML = '';
 
@@ -54,6 +55,8 @@ const initApp = async () => {
 const init3DScene = async (floorName) => {
 
     try {
+
+        office = floorName;
 
         const mainScene = new Scene3D();
 
@@ -84,14 +87,18 @@ const init3DScene = async (floorName) => {
 
         animTimeline('openApp');
 
-        DataSource.saveUser({
+        const userDataTosave = {
             office: floorName,
             userName,
             position: {x: 0, y: 0, z: 0},
             rotation: {x: 0, y: 0, z: 0},
             userHead: AVATARHEADCONFIG.current,
             userBody: AVATARBODYCONFIG.current
-        });
+        };
+
+        await DataSource.saveUser(userDataTosave);
+
+        SocketConnection.loginUser(userDataTosave)
 
         document.scene = mainScene.getScene();
 
@@ -157,6 +164,6 @@ Object.assign(document, {
     init3DScene,
     animTimeline,
     setAvatarConfig
-})
+});
 
 

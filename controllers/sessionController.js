@@ -33,6 +33,7 @@ const addNewUser = async (req, res) => {
 
 const removeUser = (data) => {
   delete sessions[data.userName];
+  console.log('sessions: ', sessions);
 };
 
 const recoverUsers = () => {

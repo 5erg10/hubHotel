@@ -214,7 +214,7 @@ export class Scene3D {
 
         for (const obj of this.#interactiveObjects) {
             if (this.#playerBox.intersectsBox(obj.userData.collisionBox)) {
-                console.log('collision object: ', obj.name);
+                // console.log('collision object: ', obj.name);
                 collisionDetected = true;
                 break;
             }

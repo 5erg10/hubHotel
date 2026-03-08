@@ -11,4 +11,12 @@ export class SocketConnection {
             console.log('servidor websockets conectado!!')
         })
     }
+
+    static Logout = (userData) => {
+        this.#connection.emit('userLogOut', { userName: userData.userName, office: userData.office, message: "me piro vampiro!!" });
+    }
+
+    static loginUser = (userData) => {
+        this.#connection.emit('loginUser', userData);
+    }
 }

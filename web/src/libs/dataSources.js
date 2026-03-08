@@ -22,7 +22,8 @@ export const saveUser = (userData) => {
         .then(response => response.json())
         .then(success => {
             console.log('user saved on session!!');
-        })
+            return resolve();
+        }).catch(err => reject(err));
     })
 }
 
