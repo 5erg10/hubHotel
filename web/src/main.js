@@ -49,7 +49,25 @@ inputNameLabel.addEventListener('keyup', (e) => {
     }, 500);
 });
 
+window.init = () => {
+    const prevUserConfig = localStorage.getItem('sceConfig');
+    if(prevUserConfig) {
+        const userConfigObject = JSON.parse(prevUserConfig);
+        AVATARBODYCONFIG.current = userConfigObject.avatarBody;
+        AVATARHEADCONFIG.current = userConfigObject.avatarHead;
+        userName = userConfigObject.userName;
+        init3DScene(userConfigObject.floor);
+    } else animTimeline('configName');
+}
+
 window.init3DScene = async (floorName) => {
+
+    localStorage.setItem('sceConfig', JSON.stringify({
+        userName: userName,
+        floor: floorName,
+        avatarHead: AVATARHEADCONFIG.current,
+        avatarBody: AVATARBODYCONFIG.current
+    }))
 
     const mainScene = new Scene3D();
 

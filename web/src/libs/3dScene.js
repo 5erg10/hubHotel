@@ -158,14 +158,14 @@ export class Scene3D {
                     body: { mixer: new THREE.AnimationMixer(bodymodel), animations: bodyGltf.animations }
                 });
 
-                const collisionCubeGeometry = new THREE.BoxGeometry(0.06, 0.06, 0.085);
+                const collisionCubeGeometry = new THREE.BoxGeometry(0.04, 0.06, 0.07);
                 const collisionCubeMaterial = new THREE.MeshLambertMaterial({color: 0xff2255});
-                const collisionCube = new THREE.Mesh(collisionCubeGeometry, collisionCubeMaterial);
-                collisionCube.name = userName;
-                collisionCube.visible = false;
-                collisionCube.position.y = 0.06;
+                const collisionCubefront = new THREE.Mesh(collisionCubeGeometry, collisionCubeMaterial);
+                collisionCubefront.name = userName;
+                collisionCubefront.visible = false;
+                collisionCubefront.position.set(0, 0.1, 0.05);
 
-                this.#avatar.add(bodymodel, headModel, collisionCube);
+                this.#avatar.add(bodymodel, headModel, collisionCubefront);
                 this.#scene.add(this.#avatar);
 
                 console.log(`Avatar body ${bodyName} added to #scene!!`);
@@ -180,9 +180,6 @@ export class Scene3D {
 
     animScene() {
 
-        let lastTime = 0;
-        const fpsInterval = 1000 / 30;
-
         this.#renderer.setAnimationLoop((time) => {
 
             this.clock.update();
@@ -193,11 +190,6 @@ export class Scene3D {
                 this.#avatarAnimConfig.head.mixer.update(delta);
             }
 
-            if (time - lastTime < fpsInterval) return;
-            lastTime = time;
-
-            if (this.controls) this.controls.update();
-
             this.#checkAvatarCollision();
 
             this.#camera.lookAt(this.#avatar.position);
@@ -206,6 +198,11 @@ export class Scene3D {
     };
 
     #checkAvatarCollision = () => {
+        
+        if (!this.#userControls) return;
+
+        let collisionDetected = false;
+
         const collisionCube = this.#avatar.children.find(child => child.name === this.#userName);
         if (!collisionCube || this.#interactiveObjects.length === 0) return;
 
@@ -218,9 +215,10 @@ export class Scene3D {
         for (const obj of this.#interactiveObjects) {
             if (this.#playerBox.intersectsBox(obj.userData.collisionBox)) {
                 console.log('collision object: ', obj.name);
+                collisionDetected = true;
+                break;
             }
         }
-
-        if (!this.#userControls) return;
+        this.#userControls[collisionDetected ? 'blockDirection' : 'unblockDirection']();
     };
 }

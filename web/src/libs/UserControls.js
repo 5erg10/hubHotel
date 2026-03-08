@@ -2,6 +2,9 @@ export class UserControls {
 
     #loopId = null;
     #keysActive = new Set();
+    #validMovementKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','Space'];
+    #movementBlocked = false;
+    #movementDirection;
 
     constructor({avatar, camera, mixer}) {
 
@@ -10,30 +13,26 @@ export class UserControls {
         this.animConfig = mixer;
         this.moveSpeed = 0.01;
 
+        this.#validMovementKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','Space'];
+
         this.#keysActive = new Set();
 
-        this.move = {
-            forward:  { block: false },
-            backward: { block: false },
-            left:     { block: false },
-            right:    { block: false }
-        };
+        this.#movementBlocked = false;
 
-        this.direction = { x: 0, y: 0, z: 0 };
+        this.#movementDirection;
+        
         this.action = "stand";
         this.#loopId = null;
     };
 
-    getDirection() { return this.direction; };
-
     getAction()    { return this.action; };
 
-    blockDirection = (dir) => {
-        if (this.move[dir]) this.move[dir].block = true;
+    blockDirection = () => {
+        this.#movementBlocked = true;
     };
 
-    unblockDirection = (dir) => {
-        if (this.move[dir]) this.move[dir].block = false;
+    unblockDirection = () => {
+        this.#movementBlocked = false;
     };
 
     getMainKeyActive() {
@@ -55,17 +54,42 @@ export class UserControls {
         }
     };
 
+    #RotateMovement = () => {
+        const keys = this.#keysActive;
+        const rotationDegrees = {
+            [keys.has('up')]: -Math.PI / 2,
+            [keys.has('down')]: Math.PI / 2,
+            [keys.has('left')]: 0,
+            [keys.has('right')]: Math.PI
+        }['true'];
+
+        this.avatar.rotation.y = rotationDegrees;
+    }
+
     #applyMovement = () => {
         const keys = this.#keysActive;
+
         if (keys.size === 0) return;
 
-        let dx = 0, dz = 0;
-        let moving = false;
+        this.#RotateMovement();
+        console.log('blockDirection: ', this.#movementBlocked);
 
-        if ((keys.has('ArrowUp')    || keys.has('KeyW')) && !this.move.forward.block)  { dx = -1; this.avatar.rotation.y = -Math.PI / 2; moving = true; }
-        if ((keys.has('ArrowDown')  || keys.has('KeyS')) && !this.move.backward.block) { dx =  1; this.avatar.rotation.y =  Math.PI / 2; moving = true; }
-        if ((keys.has('ArrowLeft')  || keys.has('KeyA')) && !this.move.left.block)     { dz =  1; this.avatar.rotation.y = 0;            moving = true; }
-        if ((keys.has('ArrowRight') || keys.has('KeyD')) && !this.move.right.block)    { dz = -1; this.avatar.rotation.y =  Math.PI;     moving = true; }
+        if (this.#movementBlocked) return;
+
+        let dx = 0, dz = 0;
+
+        if (keys.has('up')) { 
+            dx = -1;
+        }
+        if (keys.has('down')) { 
+            dx = 1;
+        }
+        if (keys.has('left')) {
+            dz = 1;
+        }
+        if (keys.has('right')) {
+            dz = -1;
+        }
 
         if (keys.has('Space')) {
             this.action = "jump";
@@ -73,16 +97,12 @@ export class UserControls {
             return;
         }
 
-        if (!moving) return;
-
         this.action = "walk";
-        this.direction.x = dx * this.moveSpeed;
-        this.direction.z = dz * this.moveSpeed;
 
-        this.avatar.position.x += this.direction.x;
-        this.avatar.position.z += this.direction.z;
-        this.camera.position.x += this.direction.x;
-        this.camera.position.z += this.direction.z;
+        this.avatar.position.x += dx * this.moveSpeed;
+        this.avatar.position.z += dz * this.moveSpeed;
+        this.camera.position.x += dx * this.moveSpeed;
+        this.camera.position.z += dz * this.moveSpeed;
 
         this.#activeMixerAnimation('play');
     };
@@ -96,25 +116,25 @@ export class UserControls {
         this.#keysActive.clear();
         this.#activeMixerAnimation('stop');
         this.action = "stand";
-        this.move.forward.block  = false;
-        this.move.backward.block = false;
-        this.move.left.block     = false;
-        this.move.right.block    = false;
-        this.direction.x = 0;
-        this.direction.z = 0;
     };
 
+    #convertKeyToDirection = (keyCode) => {
+        return {
+            [['ArrowUp','KeyW'].includes(keyCode)]: 'up',
+            [['ArrowDown','KeyS'].includes(keyCode)]: 'down',
+            [['ArrowLeft','KeyA'].includes(keyCode)]: 'left',
+            [['ArrowRight','KeyD'].includes(keyCode)]: 'right'
+        }['true'];
+    }
+
     #onKeyDown = (event) => {
-        if (event.repeat) return;
-        this.#keysActive.add(event.code);
+        if (event.repeat || !this.#validMovementKeys.includes(event.code)) return;
+        this.#keysActive.add(this.#convertKeyToDirection(event.code));
     };
 
     #onKeyUp = (event) => {
-        this.#keysActive.delete(event.code);
-        const movementKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','Space'];
-        if (!movementKeys.some(k => this.#keysActive.has(k))) {
-            this.stopMovement();
-        }
+        this.#keysActive.delete(this.#convertKeyToDirection(event.code));
+        this.stopMovement();
     };
 
     enableControls = () => {
