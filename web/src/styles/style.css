@@ -90,7 +90,7 @@ html,body {
   justify-content: flex-end;
   flex-direction: column;
   gap: 1rem;
-
+  
   input[type=text] {
     width: 100%;
     padding: 12px 20px;
@@ -106,6 +106,10 @@ html,body {
   input[type=text]:focus {
     outline: none;
     background-color: #00cece4b;
+  }
+
+  input[type=text]:disabled {
+    opacity: 0.2 !important;
   }
 }
 

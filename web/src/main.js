@@ -1,9 +1,11 @@
 import { Scene3D } from './libs/3dScene.js';
 import { animateLogo, createAnimTimeline } from './libs/animations.js';
-import { checkIfUserExists } from './libs/login.js';
 import { UserControls } from './libs/UserControls.js';
+import { SocketConnection } from './libs/Sockets.js';
+import { DataSource } from './libs/dataSources.js';
 
-let inputTimeout, userName, usercontroller;
+let inputTimeout, userName, usersList;
+const saveUserDataOnLocalStorage = false;
 
 const timeline = createAnimTimeline();
 
@@ -23,78 +25,83 @@ const AVATARBODYCONFIG = {
 
 animateLogo();
 
-inputNameLabel.addEventListener('keyup', (e) => {
-    clearTimeout(inputTimeout);
-    inputTimeout = setTimeout(async () => {
+SocketConnection.initConnect();
 
-        const user = e.target.value.trim().toLowerCase();
+const initApp = async () => {
 
-        if (!user) {
-            configAvatar.setAttribute('disabled', 'true');
-            userNameAdvice.innerHTML = 'Debes introducir un nombre de usuario';
-            return;
-        }
+    inputNameLabel.disabled = true;
+    userNameAdvice.innerHTML = 'Cargando lista de usuarios ...';
 
-        userName = user;
-
-        const userExists = await checkIfUserExists(user);
-        
-        if (userExists) {
-            configAvatar.setAttribute('disabled', 'true');
-            userNameAdvice.innerHTML = 'Este nombre ya se esta usando, elige otro'
-        } else {
-            configAvatar.setAttribute('disabled', '');
-            userNameAdvice.innerHTML = ''
-        }
-    }, 500);
-});
-
-window.init = () => {
     const prevUserConfig = localStorage.getItem('sceConfig');
+    
     if(prevUserConfig) {
         const userConfigObject = JSON.parse(prevUserConfig);
         AVATARBODYCONFIG.current = userConfigObject.avatarBody;
         AVATARHEADCONFIG.current = userConfigObject.avatarHead;
         userName = userConfigObject.userName;
         init3DScene(userConfigObject.floor);
-    } else animTimeline('configName');
+    } else {
+        localStorage.clear();
+        animTimeline('configName');
+    }
+
+    usersList = await DataSource.getUserList();
+    inputNameLabel.disabled = false;
+    userNameAdvice.innerHTML = '';
+
 }
 
-window.init3DScene = async (floorName) => {
+const init3DScene = async (floorName) => {
 
-    localStorage.setItem('sceConfig', JSON.stringify({
-        userName: userName,
-        floor: floorName,
-        avatarHead: AVATARHEADCONFIG.current,
-        avatarBody: AVATARBODYCONFIG.current
-    }))
+    try {
 
-    const mainScene = new Scene3D();
+        const mainScene = new Scene3D();
 
-    renderContent.appendChild(mainScene.getRenderer().domElement);
+        if (saveUserDataOnLocalStorage) localStorage.setItem('sceConfig', JSON.stringify({
+            userName: userName,
+            floor: floorName,
+            avatarHead: AVATARHEADCONFIG.current,
+            avatarBody: AVATARBODYCONFIG.current
+        }));
 
-    const floorAdded = await mainScene.addFloorToScene(floorName);
+        renderContent.appendChild(mainScene.getRenderer().domElement);
 
-    const avatarAdded = await mainScene.addAvatarToScene(AVATARBODYCONFIG.current, AVATARHEADCONFIG.current, userName);
+        const floorAdded = await mainScene.addFloorToScene(floorName);
 
-    usercontroller = new UserControls({
-        avatar: mainScene.getAvatar(),
-        camera: mainScene.getCamera(),
-        mixer: mainScene.getAvatarMixerConfig()
-    });
-    
-    usercontroller.enableControls();
-    
-    mainScene.setUserControls(usercontroller);
+        const avatarAdded = await mainScene.addAvatarToScene(AVATARBODYCONFIG.current, AVATARHEADCONFIG.current, userName);
 
-    mainScene.animScene();
+        const usercontroller = new UserControls({
+            avatar: mainScene.getAvatar(),
+            camera: mainScene.getCamera(),
+            mixer: mainScene.getAvatarMixerConfig()
+        });
 
-    timeline.tweenTo('openApp');
+        usercontroller.enableControls();
+        
+        mainScene.setUserControls(usercontroller);
 
-    window.scene = mainScene.getScene();
+        mainScene.animScene();
+
+        animTimeline('openApp');
+
+        DataSource.saveUser({
+            office: floorName,
+            userName,
+            position: {x: 0, y: 0, z: 0},
+            rotation: {x: 0, y: 0, z: 0},
+            userHead: AVATARHEADCONFIG.current,
+            userBody: AVATARBODYCONFIG.current
+        });
+
+        document.scene = mainScene.getScene();
+
+    } catch(error) {
+        console.log('error on load scene!!');
+        animTimeline('selectOffice');
+    }
 };
 
-window.animTimeline = (step) => {
+const animTimeline = (step) => {
     if(step === 'back') {
         timeline.reverse();
         return;
@@ -102,7 +109,7 @@ window.animTimeline = (step) => {
     timeline.tweenTo(step);
 }
 
-window.setAvatarConfig = (part, step) => {
+const setAvatarConfig = (part, step) => {
     const avatarConfig = {
         head: AVATARHEADCONFIG,
         body: AVATARBODYCONFIG
@@ -119,5 +126,37 @@ window.setAvatarConfig = (part, step) => {
     avatarConfig.current = avatarConfig.options[partIndex['true']];
     avatarConfig.domElement.src = `${avatarConfig.imagesDirectory}${avatarConfig.current}.png`;
 };
+
+// ----- LISTENERS ----------------------
+inputNameLabel.addEventListener('keyup', (e) => {
+    clearTimeout(inputTimeout);
+    inputTimeout = setTimeout(async () => {
+
+        const user = e.target.value.trim().toLowerCase();
+
+        if (!user) {
+            configAvatar.setAttribute('disabled', 'true');
+            userNameAdvice.innerHTML = 'Debes introducir un nombre de usuario';
+            return;
+        }
+
+        userName = user;
+        
+        if (usersList.includes(userName)) {
+            configAvatar.setAttribute('disabled', 'true');
+            userNameAdvice.innerHTML = 'Este nombre ya se esta usando, elige otro'
+        } else {
+            configAvatar.setAttribute('disabled', '');
+            userNameAdvice.innerHTML = ''
+        }
+    }, 500);
+});
+
+Object.assign(document, {
+    initApp,
+    init3DScene,
+    animTimeline,
+    setAvatarConfig
+})
 
 

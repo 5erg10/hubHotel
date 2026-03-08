@@ -11,5 +11,8 @@
   "devDependencies": {
     "gsap": "^3.14.2",
     "vite": "^7.3.1"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.3"
   }
 }

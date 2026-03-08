@@ -13,17 +13,17 @@
       <div id="logosBox" class="logosBox">
           <img id="nextLogo" class="nextLogo" src="./images/hub_logo_solo.png" alt="nextLogo"></img>
           <img id="hotelLogo" class="hotelLogo" src="./images/hotel_logo_solo.png" alt="hotelLogo"></img>
-          <div id="startButton" class="startButon" onclick="init()">Comenzar</div>
+          <div id="startButton" class="startButon" onclick="initApp()">Comenzar</div>
       </div>
       <div id="avatarNameBox" class="avatarNameBox">
           <div class="imputNameBox">
               <label class="stepTitle" for="inputNameLabel">Introduce un nombre para tu avatar:</label>
-              <input id="inputNameLabel" type="text" maxlength="12"/>
+              <input id="inputNameLabel" type="text" disabled maxlength="12"/>
               <div id="userNameAdvice" class="userNameAdvice">Debes introducir un nombre de usuario</div>
           </div>
           <div class="navigateButtons">
               <div onclick="animTimeline('back')" class="navigateBackButton">Volver</div>
-              <div onclick="this.getAttribute('disabled') ? 0 : animTimeline('configAvatar')" disabled="true" class="navigateContinueButton" id="configAvatar">Continuar</div>
+              <div id="configAvatar" class="navigateContinueButton" onclick="this.getAttribute('disabled') ? 0 : animTimeline('configAvatar')" disabled="true">Continuar</div>
           </div>
       </div>
       <div id="avatarConfigBox" class="avatarConfigBox">
