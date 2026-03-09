@@ -98,9 +98,14 @@ const init3DScene = async (floorName) => {
 
         await DataSource.saveUser(userDataTosave);
 
-        SocketConnection.loginUser(userDataTosave)
+        SocketConnection.loginUser(userDataTosave);
 
         document.scene = mainScene.getScene();
+
+        setTimeout(() => {
+            console.log('sending first message')
+            SocketConnection.sendPrivateMessage(userDataTosave);
+        }, 10000);
 
     } catch(error) {
         console.log('error on load scene!!');

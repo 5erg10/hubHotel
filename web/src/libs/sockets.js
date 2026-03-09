@@ -19,4 +19,8 @@ export class SocketConnection {
     static loginUser = (userData) => {
         this.#connection.emit('loginUser', userData);
     }
+
+    static sendPrivateMessage = (userData) => {
+        this.#connection.emit(userData.userName, {message: 'private message from ' + userData.userName});
+    }
 }

@@ -1,16 +1,23 @@
 'use strict'
 
-const express = require('express');
-const apiRoutes = require("./routes/routes.js")
-const sessionController = require('./controllers/sessionController.js');
-const http = require('http');
 const path = require('path');
 
 const dotenv = require('dotenv').config({
   path: path.resolve(__dirname, './env',`.env.${process.env.NODE_ENV || 'local'}`)
 });
 
+const express = require('express');
+const http = require('http');
+const apiRoutes = require("./routes/routes.js");
+
+const sessionController = require('./controllers/sessionController.js');
+const Sockets = require('./controllers/sockestCtrl.js');
+
 const app = express();
+
+const server = http.createServer(app);
+
+const secIO = require('socket.io')(server);
 
 const port = process.env.PORT || 443;
 
@@ -42,49 +49,12 @@ app.use(express.urlencoded({ extended: true }));
 //   response.redirect('/index.html');
 // });
 
-const server = http.createServer(app);
+const ssss = new Sockets(secIO, sessionController);
 
-const secIO = require('socket.io')(server);
+ssss.init();
 
 server.listen(port,() => {
 	console.log('socket server running on '+port+' port');
 });
 
 app.use('/', apiRoutes);
-
-secIO.on('connection', (socketIO) => {
-
-    socketIO.on("disconnect", () => {
-        try {
-            const user = socketIO.data.user;
-            console.log("Usuario desconectado: ", user);
-            if (user) {
-                secIO.emit("logOutUser", user);
-                sessionController.removeUser(user);
-            }
-        } catch(err) {
-            console.log('error on remove user: ', err);
-        }
-    });
-
-    socketIO.on('loginUser', (data) => {
-        console.log('user login: ', data);
-        socketIO.data.user = data;
-        secIO.emit("newUserLogin", sessionController.recoverUsers());
-    });
-
-    socketIO.on('StatusUser', (data) => {
-        secIO.emit("refreshUsers", data);
-        sessionController.refreshUserPosition(data);
-    });
-
-    socketIO.on('publicChat', (data) =>  {
-        secIO.sockets.emit('publicChatResponses', data);
-    });
-
-    socketIO.on('privateChat', (data) =>  {
-        secIO.sockets.emit(data.receiver, data);
-    });
-});
-
-sessionController.expireSessions(secIO);

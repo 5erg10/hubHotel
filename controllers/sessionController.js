@@ -51,8 +51,7 @@ const expireSessions = (io) => {
 
   if (keys.length !== usersLength) {
     usersLength = keys.length;
-    console.log('Connected users: ');
-    console.log('\t' + Object.keys(sessions).join(' '));
+    console.log('Connected users: ',  Object.keys(sessions).join(' '));
   }
   setTimeout(() => expireSessions(io), 3000);
 }

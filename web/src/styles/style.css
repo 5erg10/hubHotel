@@ -203,25 +203,25 @@ html,body {
 }
 
 .manoterasBg {
-  background-image: url("../../public/images/manoteras.png");
+  background-image: url("/images/manoteras.png");
   background-size: cover;
   background-repeat: no-repeat;
 }
 
 .tablas2Bg {
-  background-image: url("../../public/images/p0Icon.png");
+  background-image: url("/images/p0Icon.png");
   background-size: cover;
   background-repeat: no-repeat;
 }
 
 .tablas2P1Bg {
-  background-image: url("../../public/images/p1Icon.png");
+  background-image: url("/images/p1Icon.png");
   background-size: cover;
   background-repeat: no-repeat;
 }
 
 .tablas2P2Bg {
-  background-image: url("../../public/images/p2Icon.png");
+  background-image: url("/images/p2Icon.png");
   background-size: cover;
   background-repeat: no-repeat;
 }
@@ -245,7 +245,7 @@ html,body {
 
 .navigateBackButton::before{
   content: '';
-  background-image: url(../../public/images/arrowPixel.png);
+  background-image: url(/images/arrowPixel.png);
   background-size: 20px 23px;
   display: inline-block;
   width: 20px;
@@ -256,7 +256,7 @@ html,body {
 
 .navigateContinueButton::after{
   content: '';
-  background-image: url(../../public/images/arrowPixelRight.png);
+  background-image: url(/images/arrowPixelRight.png);
   background-size: 20px 23px;
   display: inline-block;
   width: 20px;
@@ -328,7 +328,7 @@ html,body {
   height: 30px;
   cursor: pointer;
   background-color: #2ecbcc;
-  background-image: url("../../public/images/publiChat.png");
+  background-image: url("/images/publiChat.png");
   background-size: cover;
 }
 
@@ -391,7 +391,7 @@ html,body {
   bottom: 0;
   padding: 5px;
   background-color: #dddbdb;
-  background-image: url(../../public/images/privateChat.png);
+  background-image: url(/images/privateChat.png);
   background-size: cover;
   box-sizing: border-box;
   -webkit-touch-callout: none;
