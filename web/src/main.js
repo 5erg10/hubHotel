@@ -4,7 +4,7 @@ import { UserControls } from './libs/UserControls.js';
 import { SocketConnection } from './libs/sockets.js';
 import { DataSource } from './libs/dataSources.js';
 
-let inputTimeout, userName, office, usersList;
+let inputTimeout, userName, office, usersList, usersConnected = [];
 const saveUserDataOnLocalStorage = false;
 
 const timeline = createAnimTimeline();
@@ -25,7 +25,7 @@ const AVATARBODYCONFIG = {
 
 animateLogo();
 
-SocketConnection.initConnect();
+const socketConnet = new SocketConnection();
 
 const initApp = async () => {
 
@@ -49,6 +49,8 @@ const initApp = async () => {
 
     inputNameLabel.disabled = false;
     userNameAdvice.innerHTML = '';
+
+    socketConnet.initConnect();
 
 }
 
@@ -98,14 +100,45 @@ const init3DScene = async (floorName) => {
 
         await DataSource.saveUser(userDataTosave);
 
-        SocketConnection.loginUser(userDataTosave);
+        // notifica el alga de usuario al servidor de sockets
+        socketConnet.loginUser(userDataTosave);
 
-        document.scene = mainScene.getScene();
+        // se subscribe al canal privado de sockets para recibir mensajes de otros usuarios
+        socketConnet.subscribeToPrivateChannel();
 
-        setTimeout(() => {
-            console.log('sending first message')
-            SocketConnection.sendPrivateMessage(userDataTosave);
-        }, 10000);
+        // se subscribe al canal que informa de la position del resto de usuarios para que el evento refreshUsersPosition actualice la actualice en el mapa
+        socketConnet.receiveUserStatus();
+
+        // notifica cuando un usuario entra en el mapa para añadir su avatar 3D
+        socketConnet.addEventListener('userEnter', (event) => {
+            console.log(event.detail);
+            const usersToAddOnScene = event.detail.filter(usr => !usersConnected.includes(usr.userName));
+            mainScene.addExternalUsersToScene(usersToAddOnScene).then(() => {
+                event.detail.forEach( usr => {
+                    if (!usersConnected.includes(usr.userName)) usersConnected.push(usr.userName);
+                });
+            }).catch(() => {
+                console.log('error on add new user to scene')
+            });
+        });
+
+        // Notifica cuando un usuario sale de la aplicacion para eliminar su Avatar del mapa
+        socketConnet.addEventListener('userLeave', (event) => {
+             mainScene.removeExternalUserFromScene(event.detail.userName);
+             usersConnected = usersConnected.filter(usr => usr != event.detail.userName);
+        });
+
+        // Recive la posicion de los usuarios para actualizarla en el mapa
+        socketConnet.addEventListener('refreshUsersPosition', (users) => {
+             mainScene.updateUsersPosition(users.detail);
+        });
+
+        // actualizo en el servidor la posicion de mi avatar para que se actualice en el mapa de otros usuarios
+        setInterval(() => {
+            socketConnet.updateUserstatus({userName, office: floorName, position: mainScene.getAvatarPosition(), rotation: mainScene.getAvatarRotation()});
+        }, 1000 / 30);
+
+        // window.scene = mainScene.getScene(); // for debug purpose
 
     } catch(error) {
         console.log('error on load scene!!');

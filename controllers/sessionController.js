@@ -5,9 +5,7 @@ let usersLength = 0;
 
 const usersList = (req, res) => {
   try {
-    setTimeout(() => {
-      res.status(200).json(Object.keys(sessions));
-    }, 3000);
+    res.status(200).json(Object.keys(sessions));
   } catch(err) {
     res.status(400).json({
         message: "Error obteniendo lista de usuarios",
@@ -33,7 +31,7 @@ const addNewUser = async (req, res) => {
 
 const removeUser = (data) => {
   delete sessions[data.userName];
-  console.log('sessions: ', sessions);
+  console.log('sessions: ', Object.keys(sessions).join(' '));
 };
 
 const recoverUsers = () => {
@@ -43,6 +41,7 @@ const recoverUsers = () => {
 const refreshUserPosition = (data) => {
   if(sessions[data.userName]) {
     sessions[data.userName].position = data.position;
+    sessions[data.userName].rotation = data.rotation;
   }
 }
 

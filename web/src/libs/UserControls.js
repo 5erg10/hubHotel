@@ -1,8 +1,8 @@
 export class UserControls {
 
-    #loopId = null;
-    #keysActive = new Set();
-    #validMovementKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','Space'];
+    #loopId;
+    #keyActive;
+    #validMovementKeys;
     #movementBlocked = false;
     #movementDirection;
 
@@ -13,9 +13,9 @@ export class UserControls {
         this.animConfig = mixer;
         this.moveSpeed = 0.01;
 
-        this.#validMovementKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','Space'];
+        this.#validMovementKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD'];
 
-        this.#keysActive = new Set();
+        this.#keyActive = null;
 
         this.#movementBlocked = false;
 
@@ -36,7 +36,7 @@ export class UserControls {
     };
 
     getMainKeyActive() {
-        return this.#keysActive;
+        return this.#keyActive;
     }
 
     #activeMixerAnimation = (action) => {
@@ -55,46 +55,34 @@ export class UserControls {
     };
 
     #RotateMovement = () => {
-        const keys = this.#keysActive;
         const rotationDegrees = {
-            [keys.has('up')]: -Math.PI / 2,
-            [keys.has('down')]: Math.PI / 2,
-            [keys.has('left')]: 0,
-            [keys.has('right')]: Math.PI
-        }['true'];
+            'up': -Math.PI / 2,
+            'down': Math.PI / 2,
+            'left': 0,
+            'right': Math.PI
+        }[this.#keyActive];
 
         this.avatar.rotation.y = rotationDegrees;
     }
 
     #applyMovement = () => {
-        const keys = this.#keysActive;
+        const keys = this.#keyActive;
 
-        if (keys.size === 0) return;
+        if (!this.#keyActive) return;
 
         this.#RotateMovement();
 
         if (this.#movementBlocked) return;
 
-        let dx = 0, dz = 0;
+        const dx = {
+            'up': -1,
+            'down': 1,
+        }[keys] || 0;
 
-        if (keys.has('up')) { 
-            dx = -1;
-        }
-        if (keys.has('down')) { 
-            dx = 1;
-        }
-        if (keys.has('left')) {
-            dz = 1;
-        }
-        if (keys.has('right')) {
-            dz = -1;
-        }
-
-        if (keys.has('Space')) {
-            this.action = "jump";
-            this.#activeMixerAnimation('play');
-            return;
-        }
+        const dz = {
+            'left': 1,
+            'right': -1
+        }[keys] || 0;
 
         this.action = "walk";
 
@@ -112,7 +100,7 @@ export class UserControls {
     };
 
     stopMovement = () => {
-        this.#keysActive.clear();
+        this.#keyActive = null;
         this.#activeMixerAnimation('stop');
         this.action = "stand";
     };
@@ -127,12 +115,14 @@ export class UserControls {
     }
 
     #onKeyDown = (event) => {
-        if (event.repeat || !this.#validMovementKeys.includes(event.code)) return;
-        this.#keysActive.add(this.#convertKeyToDirection(event.code));
+        if (!this.#keyActive && !this.#validMovementKeys.includes(event.code)) return;
+        this.#keyActive = this.#convertKeyToDirection(event.code);
     };
 
     #onKeyUp = (event) => {
-        this.#keysActive.delete(this.#convertKeyToDirection(event.code));
+        if (!this.#validMovementKeys.includes(event.code)) return;
+        if (this.#convertKeyToDirection(event.code) != this.#keyActive) return;
+        this.#keyActive = null;
         this.stopMovement();
     };
 

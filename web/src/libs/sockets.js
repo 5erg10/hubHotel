@@ -1,26 +1,55 @@
 import { io } from "socket.io-client";
+import config from "../config/config";
 
-export class SocketConnection {
+export class SocketConnection extends EventTarget {
 
-    static #connection;
+    #connection;
 
-    static initConnect = async () => {
-        this.#connection = io(`http://localhost:3000`, {transports: ['websocket']});
+    constructor() {
+        super();
+    }
+
+    initConnect = async () => {
+        this.#connection = io(`${config.socketUrl}`, {transports: ['websocket']});
 
         this.#connection.on("connect", () => {
-            console.log('servidor websockets conectado!!')
+            console.log('servidor websockets conectado!!');
+        });
+
+        this.#connection.on("userEnter", (data) => {
+           this.dispatchEvent(new CustomEvent('userEnter', {detail: data}));
+        });
+
+        this.#connection.on('userLeave', (data) => {
+            this.dispatchEvent(new CustomEvent('userLeave', {detail: data}));
         })
     }
 
-    static Logout = (userData) => {
+    Logout = (userData) => {
         this.#connection.emit('userLogOut', { userName: userData.userName, office: userData.office, message: "me piro vampiro!!" });
     }
 
-    static loginUser = (userData) => {
+    loginUser = (userData) => {
         this.#connection.emit('loginUser', userData);
     }
 
-    static sendPrivateMessage = (userData) => {
-        this.#connection.emit(userData.userName, {message: 'private message from ' + userData.userName});
+    subscribeToPrivateChannel = () => {
+        this.#connection.on('privateChatReceive', (data) => {
+            this.dispatchEvent(new CustomEvent('privateChatReceive', {detail: data}));
+        })
+    }
+
+    sendPrivateMessage = (userToSend, message) => {
+        this.#connection.emit('privateChatSend', {userName: userToSend, message});
+    }
+
+    updateUserstatus = (user) => {
+        this.#connection.emit('userStatus', user);
+    }
+
+    receiveUserStatus = () => {
+        this.#connection.on('refreshUsers', (users) => {
+            this.dispatchEvent(new CustomEvent('refreshUsersPosition', {detail: users}));
+        })
     }
 }

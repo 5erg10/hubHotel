@@ -1,53 +1,67 @@
 class SocketsCtrl {
 
-    #socketIO;
-
     constructor(io, sessionController) {
         this.io = io;
         this.sessionController = sessionController;
-        this.#socketIO;
     }
 
     init() {
         this.io.on('connection', (socket) => {
-            this.#socketIO = socket;
-            this.#registerInitialListeners();
-        })
+            this.#registerInitialListeners(socket);
+        });
+
+        this.#notifyUsersPosition();
     }
 
-    #registerInitialListeners() {
-        this.#socketIO.on("disconnect", () => {
+    #registerInitialListeners(socket) {
+
+        socket.on("disconnect", () => {
             try {
-                const user = this.#socketIO.data.user;
-                console.log("Usuario desconectado: ", user);
-                if (user) {
-                    this.#socketIO.emit("logOutUser", user);
-                    this.sessionController.removeUser(user);
-                    this.#socketIO.off(`${data.userName}`);
+                const currentUserData = socket.user;
+                if (currentUserData) {
+                    this.sessionController.removeUser(currentUserData);
+                    const usersList = Object.values(this.sessionController.recoverUsers()).filter(usr => usr.office == currentUserData.office);
+                    usersList.forEach(user => {
+                        this.io.to(user.userName).emit("userLeave", currentUserData);
+                    });
+                    socket.leave(`${currentUserData.userName}`);
                 }
             } catch(err) {
                 console.log('error on remove user: ', err);
             }
         });
 
-        this.#socketIO.on('loginUser', (data) => {
-            this.#socketIO.data.user = data;
-            this.#socketIO.emit("newUserLogin", this.sessionController.recoverUsers());
-            this.#socketIO.on(`${data.userName}`, () => console.log('socket login for: ', data))
+        socket.on('loginUser', (data) => {
+            socket.user = data;
+            socket.join(`${data.userName}`);
+            const usersList = Object.values(this.sessionController.recoverUsers()).filter(usr => usr.office == data.office);
+            usersList.forEach(user => {
+                const usersToNotify = usersList.filter(usr => usr.userName != user.userName);
+                if(usersToNotify.length) this.io.to(user.userName).emit("userEnter", usersToNotify);
+            });
         });
 
-        this.#socketIO.on('StatusUser', (data) => {
-            this.#socketIO.emit("refreshUsers", data);
+        socket.on('userStatus', (data) => {
             this.sessionController.refreshUserPosition(data);
         });
 
-        this.#socketIO.on('publicChat', (data) =>  {
-            this.#socketIO.emit('publicChatResponses', data);
+        socket.on('publicChat', (data) =>  {
+            socket.broadcast.emit('publicChatResponses', data);
         });
 
-        this.#socketIO.on('privateChat', (data) =>  {
-            this.#socketIO.emit(data.receiver, data);
+        socket.on('privateChatSend', (data) =>  {
+            this.io.to(data.userName).emit('privateChatReceive', data);
         });
+    }
+
+    #notifyUsersPosition() {
+        setInterval(() => {
+            const usersList = Object.values(this.sessionController.recoverUsers());
+            usersList.forEach(user => {
+                const usersToNotify = usersList.filter(usr => usr.office == user.office).filter(usr => usr.userName != user.userName).map(usr => ({userName: usr.userName, position: usr.position, rotation: usr.rotation}));
+                if(usersToNotify.length) this.io.to(user.userName).emit("refreshUsers", usersToNotify);
+            });
+        }, 1000 / 30);
     }
 }
 

@@ -8,6 +8,7 @@ export class Scene3D {
 
     #floor;
     #avatar;
+    #users;
     #renderer;
     #scene;
     #with;
@@ -33,6 +34,9 @@ export class Scene3D {
 
         this.#avatar = new THREE.Object3D();
         this.#avatar.name = "avatarGroup";
+
+        this.#users = new THREE.Object3D();
+        this.#users.name = "usersAvatarGroup";
 
         this.#avatarAnimConfig = {
             body: { mixer: null, animations: null },
@@ -67,6 +71,8 @@ export class Scene3D {
     getFloor()    { return this.#floor; };
     getAvatar()   { return this.#avatar; };
     getAvatarMixerConfig() { return this.#avatarAnimConfig; };
+    getAvatarPosition() { return this.#avatar.position };
+    getAvatarRotation() { return this.#avatar.rotation };
     
     setUserControls(userControls) {
         this.#userControls = userControls;
@@ -130,6 +136,72 @@ export class Scene3D {
             });
         });
     };
+
+    addExternalUsersToScene(users) {
+
+        return new Promise((resolve, reject) => {
+
+            console.log('user to add: ', users);
+
+            console.log('this users: ', this.#users);
+
+            const loadPromise = (path) => {
+                return new Promise((resolve, reject) => new GLTFLoader().load(path, (gltf) => resolve(gltf), undefined, (error) => reject(error)));
+            };
+
+            for( const user of users) {
+                Promise.all([
+                    loadPromise(`/models/avatars/bodies/${user.userBody}.glb`),
+                    loadPromise(`/models/avatars/heads/${user.userHead}.glb`)
+                ]).then(([bodyGltf, headGltf]) => {
+
+                    const userGroup = new THREE.Object3D();
+                    userGroup.name = user.userName;
+                    userGroup.position.set(user.position.x, user.position.y, user.position.z);
+
+                    const headModel = headGltf.scene;
+                    headModel.name = 'head';
+                    const bodymodel = bodyGltf.scene;
+                    bodymodel.name = 'body';
+
+                    const collisionCubeGeometry = new THREE.BoxGeometry(0.04, 0.06, 0.07);
+                    const collisionCubeMaterial = new THREE.MeshLambertMaterial({color: 0xff2255});
+                    const collisionCubefront = new THREE.Mesh(collisionCubeGeometry, collisionCubeMaterial);
+                    collisionCubefront.name = user.userName;
+                    collisionCubefront.visible = false;
+                    collisionCubefront.position.set(0, 0.1, 0.05);
+
+                    userGroup.add(bodymodel, headModel, collisionCubefront);
+                    this.#users.add(userGroup);
+
+                    console.log(`user ${user.userName} added to #scene!!`);
+
+                }).catch((error) => {
+                    console.error(`Error loading #users:`, error);
+                    return reject();
+                });
+            }
+            
+            this.#scene.add(this.#users);
+
+            return resolve();
+
+        })
+    }
+
+    removeExternalUserFromScene(userName) {
+        this.#users.children = this.#users.children.filter(usr => usr.name != userName);
+    }
+
+    updateUsersPosition(users) {
+        users.forEach(usr => {
+            const userPosition = usr.position;
+            const userRotation = usr.rotation;
+            const userObject = this.#users.children.find( child => child.name == usr.userName )
+            userObject?.position.set(userPosition.x, userPosition.y, userPosition.z);
+            userObject?.rotation.copy(new THREE.Euler(userRotation._x, userRotation._y, userRotation._z, userRotation._order));
+        })
+    }
 
     addAvatarToScene(bodyName, headName, userName) {
 
