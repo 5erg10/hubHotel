@@ -3,6 +3,7 @@ import { animateLogo, createAnimTimeline } from './libs/animations.js';
 import { UserControls } from './libs/UserControls.js';
 import { SocketConnection } from './libs/sockets.js';
 import { DataSource } from './libs/dataSources.js';
+import { DomManiputale } from './libs/DomManipulate.js';
 
 let inputTimeout, userName, office, usersList, usersConnected = [];
 const saveUserDataOnLocalStorage = false;
@@ -21,6 +22,20 @@ const AVATARBODYCONFIG = {
     current: 'body_1',
     domElement: selectorBodyBox,
     imagesDirectory: 'images/avatarBodies/'
+};
+
+const sections = {
+    comedor: { title: 'Comedor', info: 'Aquì es donde viene la gente cuando quiere comer.'},
+    innovacion: { title: 'Innovaciòn', info: 'Aquì es donde se prueban nuevas tecnoologias, por si alguna merece la pena.'},
+    recepcion: { title: 'Recepciòn', info: 'Si necesitas ayuda con cualquier informaciòn, aquì te atenderàn con sumo gusto.'},
+    it: { title: 'IT', info: 'Aquì es donde vienes cuando necesitas permisos para accesos, portatiles nuevos...'},
+    biblioteca: { title: 'Biblioteca', info: 'Si tienes que estudiar, ¿què mejor sitio que este?'},
+    cocina: { title: 'Cocina', info: '¿No te tragiste comida de casa?, no pasa nada, aquì te ofreceran siempre algo rico.'},
+    alacena: { title: 'Alacena', info: 'Si te tragiste comida de casa, aquì estara a buen recaudo hasta la hora de comer.'},
+    comunicación: { title: 'Comunicaciòn', info: 'Todo lo que tenga que ver con la comunicaciòn de la empresa con clientes o empleados pasa por aquì.'},
+    people: { title: 'People', info: 'El recursos humanos de siempre esta aqui.'},
+    finance: { title: 'Finance', info: 'Aquì se suelen poner los jefes (Pasa con cuidado ...).'},
+    proyectos: { title: 'Proyectos', info: 'Aquì podràs encontrar a las personas que trabajan en los diferentes proyectos de la empresa.'},
 };
 
 animateLogo();
@@ -54,6 +69,13 @@ const initApp = async () => {
 
 }
 
+const collisionReaction = (objectName) => {
+    const cleanName = objectName.replace(/\d/g, "").toLowerCase();
+    const responseByObject = {
+        [!!sections[cleanName]]: () => DomManiputale.addSeccionDetailsToWindow(sections[cleanName])
+    }[true]?.();
+}
+
 const init3DScene = async (floorName) => {
 
     try {
@@ -71,9 +93,9 @@ const init3DScene = async (floorName) => {
 
         renderContent.appendChild(mainScene.getRenderer().domElement);
 
-        const floorAdded = await mainScene.addFloorToScene(floorName);
+        await mainScene.addFloorToScene(floorName);
 
-        const avatarAdded = await mainScene.addAvatarToScene(AVATARBODYCONFIG.current, AVATARHEADCONFIG.current, userName);
+        await mainScene.addAvatarToScene(AVATARBODYCONFIG.current, AVATARHEADCONFIG.current, userName);
 
         const usercontroller = new UserControls({
             avatar: mainScene.getAvatar(),
@@ -131,6 +153,14 @@ const init3DScene = async (floorName) => {
         // Recive la posicion de los usuarios para actualizarla en el mapa
         socketConnet.addEventListener('refreshUsersPosition', (users) => {
              mainScene.updateUsersPosition(users.detail);
+        });
+
+        mainScene.addEventListener('ObjectColision', (objectName) => {
+            collisionReaction(objectName.detail);
+        });
+
+        mainScene.addEventListener('noCollisions', (objectName) => {
+            DomManiputale.removeInfoLabel();
         });
 
         // actualizo en el servidor la posicion de mi avatar para que se actualice en el mapa de otros usuarios

@@ -4,7 +4,7 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/Addons.js';
 
 const HOLLOW_OBJECTS = ['interactparedes', 'interactcristaleras'];
-export class Scene3D {
+export class Scene3D extends EventTarget {
 
     #floor;
     #avatar;
@@ -19,8 +19,11 @@ export class Scene3D {
     #userName;
     #playerBox;
     #userControls = null;
+    #collisionObjectName;
 
     constructor() {
+
+        super();
 
         this.#interactiveObjects = [];
 
@@ -63,6 +66,8 @@ export class Scene3D {
         this.#renderer.setClearColor(0x2776b3, 1);
         this.#renderer.setViewport(0, 0, this.#with, this.#height);
         this.#renderer.gammaOutput = true;
+
+        this.#collisionObjectName = undefined;
     };
 
     getRenderer() { return this.#renderer; };
@@ -94,9 +99,8 @@ export class Scene3D {
 
                 objLoader.load(officeName+'.obj', (officeObjects) => {
                     officeObjects.children.map((plantObject) => {
-
                         plantObject.name = plantObject.name.replace(/_[a-z]*.[0-9]*/gi, "");
-
+                        
                         if (plantObject.name.match("interact")) {
                             const normalizedName = plantObject.name.toLowerCase();
                             const isHollow = HOLLOW_OBJECTS.some(h => normalizedName.includes(h));
@@ -141,10 +145,6 @@ export class Scene3D {
 
         return new Promise((resolve, reject) => {
 
-            console.log('user to add: ', users);
-
-            console.log('this users: ', this.#users);
-
             const loadPromise = (path) => {
                 return new Promise((resolve, reject) => new GLTFLoader().load(path, (gltf) => resolve(gltf), undefined, (error) => reject(error)));
             };
@@ -164,15 +164,20 @@ export class Scene3D {
                     const bodymodel = bodyGltf.scene;
                     bodymodel.name = 'body';
 
-                    const collisionCubeGeometry = new THREE.BoxGeometry(0.04, 0.06, 0.07);
+                    const collisionCubeGeometry = new THREE.BoxGeometry(0.07, 0.07, 0.07);
                     const collisionCubeMaterial = new THREE.MeshLambertMaterial({color: 0xff2255});
                     const collisionCubefront = new THREE.Mesh(collisionCubeGeometry, collisionCubeMaterial);
                     collisionCubefront.name = user.userName;
                     collisionCubefront.visible = false;
-                    collisionCubefront.position.set(0, 0.1, 0.05);
+                    collisionCubefront.position.set(0, 0.1, 0);
 
                     userGroup.add(bodymodel, headModel, collisionCubefront);
+
+                    collisionCubefront.userData.collisionBox = new THREE.Box3().setFromObject(collisionCubefront);
+
                     this.#users.add(userGroup);
+
+                    this.#interactiveObjects.push(collisionCubefront);
 
                     console.log(`user ${user.userName} added to #scene!!`);
 
@@ -191,6 +196,7 @@ export class Scene3D {
 
     removeExternalUserFromScene(userName) {
         this.#users.children = this.#users.children.filter(usr => usr.name != userName);
+        this.#interactiveObjects = this.#interactiveObjects.filter(usr => usr.name != userName);
     }
 
     updateUsersPosition(users) {
@@ -230,7 +236,7 @@ export class Scene3D {
                     body: { mixer: new THREE.AnimationMixer(bodymodel), animations: bodyGltf.animations }
                 });
 
-                const collisionCubeGeometry = new THREE.BoxGeometry(0.04, 0.06, 0.07);
+                const collisionCubeGeometry = new THREE.BoxGeometry(0.04, 0.15, 0.07); // width, height, depth
                 const collisionCubeMaterial = new THREE.MeshLambertMaterial({color: 0xff2255});
                 const collisionCubefront = new THREE.Mesh(collisionCubeGeometry, collisionCubeMaterial);
                 collisionCubefront.name = userName;
@@ -274,6 +280,7 @@ export class Scene3D {
         if (!this.#userControls) return;
 
         let collisionDetected = false;
+        let collisionObjectName = '';
 
         const collisionCube = this.#avatar.children.find(child => child.name === this.#userName);
         if (!collisionCube || this.#interactiveObjects.length === 0) return;
@@ -286,11 +293,22 @@ export class Scene3D {
 
         for (const obj of this.#interactiveObjects) {
             if (this.#playerBox.intersectsBox(obj.userData.collisionBox)) {
-                // console.log('collision object: ', obj.name);
+                collisionObjectName = obj.name;
                 collisionDetected = true;
                 break;
             }
         }
-        this.#userControls[collisionDetected ? 'blockDirection' : 'unblockDirection']();
+
+        if (collisionDetected) {
+            this.#userControls['blockDirection']();
+            if(this.#collisionObjectName != collisionObjectName) {
+                this.#collisionObjectName = collisionObjectName;
+                this.dispatchEvent(new CustomEvent('ObjectColision', {detail: collisionObjectName}));
+            }
+        } else {
+            this.#userControls['unblockDirection']();
+            if(this.#collisionObjectName) this.dispatchEvent(new CustomEvent('noCollisions'));
+            this.#collisionObjectName = undefined;
+        }
     };
 }
