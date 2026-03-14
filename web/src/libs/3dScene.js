@@ -5,6 +5,10 @@ import { GLTFLoader } from 'three/examples/jsm/Addons.js';
 
 const HOLLOW_OBJECTS = ['interactparedes', 'interactcristaleras'];
 
+// Maximum distance (metres) at which another user can trigger a collision check.
+// Users beyond this radius are skipped entirely in the broad phase.
+const MAX_COLLISION_DISTANCE = 1.0;
+
 /**
  * Creates a billboard Sprite with the given username rendered as a texture.
  * The sprite always faces the camera automatically (Three.js Sprite behaviour).
@@ -135,7 +139,7 @@ export class Scene3D extends EventTarget {
     getAvatarMixerConfig() { return this.#avatarAnimConfig; };
     getAvatarPosition() { return this.#avatar.position };
     getAvatarRotation() { return this.#avatar.rotation };
-    
+
     setUserControls(userControls) {
         this.#userControls = userControls;
     };
@@ -157,7 +161,7 @@ export class Scene3D extends EventTarget {
                 objLoader.load(officeName+'.obj', (officeObjects) => {
                     officeObjects.children.map((plantObject) => {
                         plantObject.name = plantObject.name.replace(/_[a-z]*.[0-9]*/gi, "");
-                        
+
                         if (plantObject.name.match("interact")) {
                             const normalizedName = plantObject.name.toLowerCase();
                             const isHollow = HOLLOW_OBJECTS.some(h => normalizedName.includes(h));
@@ -165,6 +169,9 @@ export class Scene3D extends EventTarget {
                             if (isHollow) plantObject.material.side = THREE.DoubleSide;
 
                             plantObject.userData.collisionBox = new THREE.Box3().setFromObject(plantObject);
+                            // Floor objects never move — flag them so the collision loop
+                            // can reuse the pre-computed Box3 without recalculating.
+                            plantObject.userData.isStaticCollider = true;
 
                             this.#interactiveObjects.push(plantObject);
                         }
@@ -206,7 +213,7 @@ export class Scene3D extends EventTarget {
                 return new Promise((resolve, reject) => new GLTFLoader().load(path, (gltf) => resolve(gltf), undefined, (error) => reject(error)));
             };
 
-            for( const user of users) {
+            for (const user of users) {
                 Promise.all([
                     loadPromise(`/models/avatars/bodies/${user.userBody}.glb`),
                     loadPromise(`/models/avatars/heads/${user.userHead}.glb`)
@@ -233,10 +240,16 @@ export class Scene3D extends EventTarget {
 
                     userGroup.add(bodymodel, headModel, collisionCubefront, nameSprite);
 
-                    collisionCubefront.userData.collisionBox = new THREE.Box3().setFromObject(collisionCubefront);
+                    // Keep a direct reference to the collision cube so updateUsersPosition
+                    // can refresh its Box3 without traversing the scene graph.
+                    userGroup.userData.collisionCube = collisionCubefront;
+
+                    // Do NOT compute the Box3 here — the userGroup is not yet part of the
+                    // scene, so world-matrix propagation hasn't happened and setFromObject
+                    // would anchor the box at the origin instead of the user's real position.
+                    // The Box3 will be initialised on the first updateUsersPosition call.
 
                     this.#users.add(userGroup);
-
                     this.#interactiveObjects.push(collisionCubefront);
 
                     console.log(`user ${user.userName} added to #scene!!`);
@@ -246,12 +259,10 @@ export class Scene3D extends EventTarget {
                     return reject();
                 });
             }
-            
+
             this.#scene.add(this.#users);
-
             return resolve();
-
-        })
+        });
     }
 
     removeExternalUserFromScene(userName) {
@@ -263,10 +274,21 @@ export class Scene3D extends EventTarget {
         users.forEach(usr => {
             const userPosition = usr.position;
             const userRotation = usr.rotation;
-            const userObject = this.#users.children.find( child => child.name == usr.userName )
-            userObject?.position.set(userPosition.x, userPosition.y, userPosition.z);
-            userObject?.rotation.copy(new THREE.Euler(userRotation._x, userRotation._y, userRotation._z, userRotation._order));
-        })
+            const userObject = this.#users.children.find(child => child.name == usr.userName);
+
+            if (!userObject) return;
+
+            userObject.position.set(userPosition.x, userPosition.y, userPosition.z);
+            userObject.rotation.copy(new THREE.Euler(userRotation._x, userRotation._y, userRotation._z, userRotation._order));
+
+            // Refresh the collision Box3 now that the user has moved.
+            // This runs at the server tick rate (~30 fps), not every render frame,
+            // keeping the cost proportional to actual position changes.
+            const cube = userObject.userData.collisionCube;
+            if (cube) {
+                cube.userData.collisionBox = new THREE.Box3().setFromObject(cube);
+            }
+        });
     }
 
     addAvatarToScene(bodyName, headName, userName) {
@@ -336,7 +358,7 @@ export class Scene3D extends EventTarget {
     };
 
     #checkAvatarCollision = () => {
-        
+
         if (!this.#userControls) return;
 
         let collisionDetected = false;
@@ -352,7 +374,19 @@ export class Scene3D extends EventTarget {
         collisionCube.getWorldPosition(avatarPos);
 
         for (const obj of this.#interactiveObjects) {
-            if (this.#playerBox.intersectsBox(obj.userData.collisionBox)) {
+
+            // Broad phase — cheap distance check for user avatars.
+            // Static floor colliders skip this; they use their pre-computed Box3 directly.
+            if (!obj.userData.isStaticCollider) {
+                const objPos = new THREE.Vector3();
+                obj.getWorldPosition(objPos);
+                if (avatarPos.distanceTo(objPos) > MAX_COLLISION_DISTANCE) continue;
+            }
+
+            // Narrow phase — precise Box3 intersection.
+            // Static colliders always have a collisionBox; user cubes get theirs
+            // set by updateUsersPosition so it may be undefined on the very first frame.
+            if (obj.userData.collisionBox && this.#playerBox.intersectsBox(obj.userData.collisionBox)) {
                 collisionObjectName = obj.name;
                 collisionDetected = true;
                 break;
@@ -361,13 +395,13 @@ export class Scene3D extends EventTarget {
 
         if (collisionDetected) {
             this.#userControls['blockDirection']();
-            if(this.#collisionObjectName != collisionObjectName) {
+            if (this.#collisionObjectName != collisionObjectName) {
                 this.#collisionObjectName = collisionObjectName;
                 this.dispatchEvent(new CustomEvent('ObjectColision', {detail: collisionObjectName}));
             }
         } else {
             this.#userControls['unblockDirection']();
-            if(this.#collisionObjectName) this.dispatchEvent(new CustomEvent('noCollisions'));
+            if (this.#collisionObjectName) this.dispatchEvent(new CustomEvent('noCollisions'));
             this.#collisionObjectName = undefined;
         }
     };
