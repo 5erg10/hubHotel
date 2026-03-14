@@ -71,7 +71,6 @@ const initApp = async () => {
 
 const collisionReaction = (objectName) => {
     const cleanName = objectName.replace(/\d/g, "").toLowerCase();
-    console.log('clean name: ', cleanName);
     const responseByObject = {
         [!!sections[cleanName]]: () => DomManiputale.addSeccionDetailsToWindow(sections[cleanName]),
         [usersConnected.includes(cleanName)]: () => console.log(`Has colisionado con el usuario ${cleanName}`)

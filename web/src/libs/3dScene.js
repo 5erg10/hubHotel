@@ -319,7 +319,7 @@ export class Scene3D extends EventTarget {
                 this.#avatar.add(bodymodel, headModel, collisionCubefront);
                 this.#scene.add(this.#avatar);
 
-                console.log(`Avatar body ${bodyName} added to #scene!!`);
+                console.log(`Avatar ${userName} added to #scene with ${bodyName} and ${headName}!!`);
                 return resolve(this.#avatar);
 
             }).catch((error) => {
@@ -365,7 +365,7 @@ export class Scene3D extends EventTarget {
         collisionCube.getWorldPosition(avatarPos);
 
         for (const obj of this.#interactiveObjects) {
-            
+
             if (!obj.userData.isStaticCollider) {
                 const objPos = new THREE.Vector3();
                 obj.getWorldPosition(objPos);
