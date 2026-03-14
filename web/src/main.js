@@ -5,7 +5,7 @@ import { SocketConnection } from './libs/sockets.js';
 import { DataSource } from './libs/dataSources.js';
 import { DomManiputale } from './libs/DomManipulate.js';
 
-let inputTimeout, userName, office, usersList, usersConnected = [];
+let inputTimeout, userName, usersList, usersConnected = [];
 const saveUserDataOnLocalStorage = false;
 
 const timeline = createAnimTimeline();
@@ -27,7 +27,7 @@ const AVATARBODYCONFIG = {
 const sections = {
     comedor: { title: 'Comedor', info: 'Aquì es donde viene la gente cuando quiere comer.'},
     innovacion: { title: 'Innovaciòn', info: 'Aquì es donde se prueban nuevas tecnoologias, por si alguna merece la pena.'},
-    recepcion: { title: 'Recepciòn', info: 'Si necesitas ayuda con cualquier informaciòn, aquì te atenderàn con sumo gusto.'},
+    recepción: { title: 'Recepciòn', info: 'Si necesitas ayuda con cualquier informaciòn, aquì te atenderàn con sumo gusto.'},
     it: { title: 'IT', info: 'Aquì es donde vienes cuando necesitas permisos para accesos, portatiles nuevos...'},
     biblioteca: { title: 'Biblioteca', info: 'Si tienes que estudiar, ¿què mejor sitio que este?'},
     cocina: { title: 'Cocina', info: '¿No te tragiste comida de casa?, no pasa nada, aquì te ofreceran siempre algo rico.'},
@@ -71,16 +71,16 @@ const initApp = async () => {
 
 const collisionReaction = (objectName) => {
     const cleanName = objectName.replace(/\d/g, "").toLowerCase();
+    console.log('clean name: ', cleanName);
     const responseByObject = {
-        [!!sections[cleanName]]: () => DomManiputale.addSeccionDetailsToWindow(sections[cleanName])
+        [!!sections[cleanName]]: () => DomManiputale.addSeccionDetailsToWindow(sections[cleanName]),
+        [usersConnected.includes(cleanName)]: () => console.log(`Has colisionado con el usuario ${cleanName}`)
     }[true]?.();
 }
 
 const init3DScene = async (floorName) => {
 
     try {
-
-        office = floorName;
 
         const mainScene = new Scene3D();
 
@@ -133,7 +133,6 @@ const init3DScene = async (floorName) => {
 
         // notifica cuando un usuario entra en el mapa para añadir su avatar 3D
         socketConnet.addEventListener('userEnter', (event) => {
-            console.log(event.detail);
             const usersToAddOnScene = event.detail.filter(usr => !usersConnected.includes(usr.userName));
             mainScene.addExternalUsersToScene(usersToAddOnScene).then(() => {
                 event.detail.forEach( usr => {
@@ -159,7 +158,7 @@ const init3DScene = async (floorName) => {
             collisionReaction(objectName.detail);
         });
 
-        mainScene.addEventListener('noCollisions', (objectName) => {
+        mainScene.addEventListener('noCollisions', () => {
             DomManiputale.removeInfoLabel();
         });
 
@@ -171,7 +170,7 @@ const init3DScene = async (floorName) => {
         // window.scene = mainScene.getScene(); // for debug purpose
 
     } catch(error) {
-        console.log('error on load scene!!');
+        console.log('error on load scene: ', error);
         animTimeline('selectOffice');
     }
 };

@@ -40,8 +40,10 @@ export class UserControls {
     }
 
     #activeMixerAnimation = (action) => {
-        const BodyAnimation = this.animConfig.body.mixer.clipAction(this.animConfig.body.animations.find(a => a.name === this.action));
-        const HeadAnimation = this.animConfig.head.mixer.clipAction(this.animConfig.head.animations.find(a => a.name === this.action));
+        const bodyMixer = this.animConfig.body.animations.find(a => a.name === this.action);
+        const headMixer = this.animConfig.head.animations.find(a => a.name === this.action);
+        const BodyAnimation = !!bodyMixer ? this.animConfig.body.mixer.clipAction(bodyMixer) : undefined;
+        const HeadAnimation = !!headMixer ? this.animConfig.head.mixer.clipAction(headMixer) : undefined;
         if (action === 'stop' || !BodyAnimation?.isRunning()) {
             if (HeadAnimation) {
                 if (this.action == 'jump') HeadAnimation.setEffectiveTimeScale(3);

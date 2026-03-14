@@ -235,19 +235,10 @@ export class Scene3D extends EventTarget {
                     collisionCubefront.visible = false;
                     collisionCubefront.position.set(0, 0.1, 0);
 
-                    // Username label — billboard sprite that always faces the camera
                     const nameSprite = createUserNameSprite(user.userName);
 
                     userGroup.add(bodymodel, headModel, collisionCubefront, nameSprite);
-
-                    // Keep a direct reference to the collision cube so updateUsersPosition
-                    // can refresh its Box3 without traversing the scene graph.
                     userGroup.userData.collisionCube = collisionCubefront;
-
-                    // Do NOT compute the Box3 here — the userGroup is not yet part of the
-                    // scene, so world-matrix propagation hasn't happened and setFromObject
-                    // would anchor the box at the origin instead of the user's real position.
-                    // The Box3 will be initialised on the first updateUsersPosition call.
 
                     this.#users.add(userGroup);
                     this.#interactiveObjects.push(collisionCubefront);
@@ -374,18 +365,13 @@ export class Scene3D extends EventTarget {
         collisionCube.getWorldPosition(avatarPos);
 
         for (const obj of this.#interactiveObjects) {
-
-            // Broad phase — cheap distance check for user avatars.
-            // Static floor colliders skip this; they use their pre-computed Box3 directly.
+            
             if (!obj.userData.isStaticCollider) {
                 const objPos = new THREE.Vector3();
                 obj.getWorldPosition(objPos);
                 if (avatarPos.distanceTo(objPos) > MAX_COLLISION_DISTANCE) continue;
             }
 
-            // Narrow phase — precise Box3 intersection.
-            // Static colliders always have a collisionBox; user cubes get theirs
-            // set by updateUsersPosition so it may be undefined on the very first frame.
             if (obj.userData.collisionBox && this.#playerBox.intersectsBox(obj.userData.collisionBox)) {
                 collisionObjectName = obj.name;
                 collisionDetected = true;
