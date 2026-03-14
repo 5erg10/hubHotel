@@ -4,6 +4,63 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/Addons.js';
 
 const HOLLOW_OBJECTS = ['interactparedes', 'interactcristaleras'];
+
+/**
+ * Creates a billboard Sprite with the given username rendered as a texture.
+ * The sprite always faces the camera automatically (Three.js Sprite behaviour).
+ *
+ * @param {string} userName
+ * @returns {THREE.Sprite}
+ */
+function createUserNameSprite(userName) {
+    const canvas = document.createElement('canvas');
+    const ctx    = canvas.getContext('2d');
+
+    const fontSize   = 48;
+    const padding    = 16;
+    const fontFamily = 'Arial, sans-serif';
+
+    ctx.font = `bold ${fontSize}px ${fontFamily}`;
+    const textWidth = ctx.measureText(userName).width;
+
+    canvas.width  = textWidth + padding * 2;
+    canvas.height = fontSize  + padding * 2;
+
+    // Background pill
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    const radius = canvas.height / 2;
+    ctx.beginPath();
+    ctx.moveTo(radius, 0);
+    ctx.lineTo(canvas.width - radius, 0);
+    ctx.arcTo(canvas.width, 0, canvas.width, canvas.height, radius);
+    ctx.arcTo(canvas.width, canvas.height, 0, canvas.height, radius);
+    ctx.arcTo(0, canvas.height, 0, 0, radius);
+    ctx.arcTo(0, 0, canvas.width, 0, radius);
+    ctx.closePath();
+    ctx.fill();
+
+    // Text
+    ctx.font         = `bold ${fontSize}px ${fontFamily}`;
+    ctx.fillStyle    = '#ffffff';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign    = 'center';
+    ctx.fillText(userName, canvas.width / 2, canvas.height / 2);
+
+    const texture  = new THREE.CanvasTexture(canvas);
+    const material = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+    const sprite   = new THREE.Sprite(material);
+
+    // Scale sprite so it looks right relative to the avatar size
+    const aspect = canvas.width / canvas.height;
+    sprite.scale.set(aspect * 0.12, 0.12, 1);
+
+    // Position it above the avatar's head
+    sprite.position.set(0, 0.42, 0);
+    sprite.name = 'userName-label';
+
+    return sprite;
+}
+
 export class Scene3D extends EventTarget {
 
     #floor;
@@ -171,7 +228,10 @@ export class Scene3D extends EventTarget {
                     collisionCubefront.visible = false;
                     collisionCubefront.position.set(0, 0.1, 0);
 
-                    userGroup.add(bodymodel, headModel, collisionCubefront);
+                    // Username label — billboard sprite that always faces the camera
+                    const nameSprite = createUserNameSprite(user.userName);
+
+                    userGroup.add(bodymodel, headModel, collisionCubefront, nameSprite);
 
                     collisionCubefront.userData.collisionBox = new THREE.Box3().setFromObject(collisionCubefront);
 
