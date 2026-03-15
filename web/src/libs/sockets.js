@@ -34,13 +34,13 @@ export class SocketConnection extends EventTarget {
     }
 
     subscribeToPrivateChannel = () => {
-        this.#connection.on('privateChatReceive', (data) => {
+        this.#connection.on('privateChatSender', (data) => {
             this.dispatchEvent(new CustomEvent('privateChatReceive', {detail: data}));
         })
     }
 
-    sendPrivateMessage = (userToSend, message) => {
-        this.#connection.emit('privateChatSend', {userName: userToSend, message});
+    sendPrivateMessage = ({userSender, userToSend, message}) => {
+        this.#connection.emit('privateChatReceiver', {userSender: userSender, userReceiver: userToSend, message});
     }
 
     updateUserstatus = (user) => {

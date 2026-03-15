@@ -49,8 +49,8 @@ class SocketsCtrl {
             socket.broadcast.emit('publicChatResponses', data);
         });
 
-        socket.on('privateChatSend', (data) =>  {
-            this.io.to(data.userName).emit('privateChatReceive', data);
+        socket.on('privateChatReceiver', (data) =>  {
+            this.io.to(data.userReceiver).emit('privateChatSender', data);
         });
     }
 
