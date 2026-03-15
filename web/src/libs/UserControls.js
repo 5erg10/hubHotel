@@ -6,11 +6,8 @@ export class UserControls {
     #movementBlocked = false;
     #movementDirection;
 
-    constructor({avatar, camera, mixer}) {
+    constructor() {
 
-        this.avatar = avatar;
-        this.camera = camera;
-        this.animConfig = mixer;
         this.moveSpeed = 0.01;
 
         this.#validMovementKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD'];
@@ -22,8 +19,15 @@ export class UserControls {
         this.#movementDirection;
         
         this.action = "stand";
+
         this.#loopId = null;
     };
+
+    initController({avatar, camera, mixer}) {
+        this.avatar = avatar;
+        this.camera = camera;
+        this.animConfig = mixer;
+    }
 
     getAction()    { return this.action; };
 
@@ -68,6 +72,9 @@ export class UserControls {
     }
 
     #applyMovement = () => {
+        
+        if (!this.avatar || !this.avatar || !this.animConfig) return;
+
         const keys = this.#keyActive;
 
         if (!this.#keyActive) return;
@@ -129,6 +136,7 @@ export class UserControls {
     };
 
     enableControls = () => {
+        if (!this.avatar || !this.avatar || !this.animConfig) return;
         document.addEventListener('keydown', this.#onKeyDown);
         document.addEventListener('keyup',   this.#onKeyUp);
         this.#loopId = requestAnimationFrame(this.#loop);
@@ -141,5 +149,7 @@ export class UserControls {
             cancelAnimationFrame(this.#loopId);
             this.#loopId = null;
         }
+        this.#keyActive = null;
+        this.#activeMixerAnimation('stop');
     };
 };

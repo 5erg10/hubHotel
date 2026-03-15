@@ -20,11 +20,11 @@ function createUserNameSprite(userName) {
     const canvas = document.createElement('canvas');
     const ctx    = canvas.getContext('2d');
 
-    const fontSize   = 48;
-    const padding    = 16;
+    const fontSize   = 12;
+    const padding    = 8;
     const fontFamily = 'Arial, sans-serif';
 
-    ctx.font = `bold ${fontSize}px ${fontFamily}`;
+    ctx.font = `${fontSize}px ${fontFamily}`;
     const textWidth = ctx.measureText(userName).width;
 
     canvas.width  = textWidth + padding * 2;
@@ -32,7 +32,7 @@ function createUserNameSprite(userName) {
 
     // Background pill
     ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-    const radius = canvas.height / 2;
+    const radius = 0;
     ctx.beginPath();
     ctx.moveTo(radius, 0);
     ctx.lineTo(canvas.width - radius, 0);
@@ -44,7 +44,7 @@ function createUserNameSprite(userName) {
     ctx.fill();
 
     // Text
-    ctx.font         = `bold ${fontSize}px ${fontFamily}`;
+    ctx.font         = `${fontSize}px ${fontFamily}`;
     ctx.fillStyle    = '#ffffff';
     ctx.textBaseline = 'middle';
     ctx.textAlign    = 'center';
@@ -56,11 +56,11 @@ function createUserNameSprite(userName) {
 
     // Scale sprite so it looks right relative to the avatar size
     const aspect = canvas.width / canvas.height;
-    sprite.scale.set(aspect * 0.12, 0.12, 1);
+    sprite.scale.set(aspect * 0.1, 0.1, 1);
 
     // Position it above the avatar's head
-    sprite.position.set(0, 0.42, 0);
-    sprite.name = 'userName-label';
+    sprite.position.set(0.07, 0.2, -0.05);
+    sprite.name = `${userName}-label`;
 
     return sprite;
 }
