@@ -5,7 +5,7 @@ import { SocketConnection } from './libs/sockets.js';
 import { DataSource } from './libs/dataSources.js';
 import { DomManiputale } from './libs/DomManipulate.js';
 
-let inputTimeout, userName, usersList, usersConnected = [];
+let inputTimeout, userName, usersList, usersConnected = [], userController;
 const saveUserDataOnLocalStorage = false;
 
 const timeline = createAnimTimeline();
@@ -71,10 +71,11 @@ const initApp = async () => {
 
 const collisionReaction = (objectName) => {
     const cleanName = objectName.replace(/\d/g, "").toLowerCase();
-    const responseByObject = {
-        [!!sections[cleanName]]: () => DomManiputale.addSeccionDetailsToWindow(sections[cleanName]),
-        [usersConnected.includes(cleanName)]: () => console.log(`Has colisionado con el usuario ${cleanName}`)
-    }[true]?.();
+    if (!!sections[cleanName]) DomManiputale.addSeccionDetailsToWindow(sections[cleanName]);
+    if ( usersConnected.includes(cleanName) ) {
+        if(!!userController) userController.blockDirection();
+        DomManiputale.addPrivateChatWindow();
+    }
 }
 
 const init3DScene = async (floorName) => {
@@ -96,15 +97,15 @@ const init3DScene = async (floorName) => {
 
         await mainScene.addAvatarToScene(AVATARBODYCONFIG.current, AVATARHEADCONFIG.current, userName);
 
-        const usercontroller = new UserControls({
+        userController = new UserControls({
             avatar: mainScene.getAvatar(),
             camera: mainScene.getCamera(),
             mixer: mainScene.getAvatarMixerConfig()
         });
 
-        usercontroller.enableControls();
+        userController.enableControls();
         
-        mainScene.setUserControls(usercontroller);
+        mainScene.setUserControls(userController);
 
         mainScene.animScene();
 
@@ -152,6 +153,10 @@ const init3DScene = async (floorName) => {
         socketConnet.addEventListener('refreshUsersPosition', (users) => {
              mainScene.updateUsersPosition(users.detail);
         });
+
+        socketConnet.addEventListener('privateChatReceive', (data) => {
+            userController.blockDirection();
+        })
 
         mainScene.addEventListener('ObjectColision', (objectName) => {
             collisionReaction(objectName.detail);

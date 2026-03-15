@@ -39,4 +39,34 @@ export class DomManiputale {
     static removeInfoLabel() {
         document.getElementById("additionalSecionInfo")?.remove();
     }
+
+    static addPrivateChatWindow() {
+        const div = document.createElement("div");
+        div.id = "privateChatWindow";
+        div.style.cssText = `
+            background-color: white;
+            color: black;
+            border: solid 5px black;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            margin: auto;
+            width: 450px;
+            height: 350px;
+            display: grid;
+            grid-template-rows: auto 50px;
+        `;
+
+        const titleContent = document.createElement("div");
+        titleContent.textContent = title;
+        titleContent.style.cssText = `
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        `;
+        
+        div.appendChild(titleContent);
+        document.body.appendChild(div);
+    }
 }
