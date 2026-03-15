@@ -89,7 +89,6 @@ const initApp = async () => {
 
 const collisionReaction = (objectName) => {
     const cleanName = objectName.replace(/\d/g, "").toLowerCase();
-    console.log('salta collision: ', enableUsersColision, cleanName)
     if (!!sections[cleanName]) domManipulator.addSeccionDetailsToWindow(sections[cleanName]);
     if(enableUsersColision && usersConnected.includes(cleanName)) {
         if(!!userController) userController.disableControls();
@@ -149,7 +148,7 @@ const init3DScene = async (floorName) => {
 
         addMainListeners();
 
-        enableUserCollisionsTimer = setTimeout(() => enableUsersColision = true, 3000);
+        enableUserCollisionsTimer = setTimeout(() => { enableUsersColision = true }, 3000);
 
         // actualizo en el servidor la posicion de mi avatar para que se actualice en el mapa de otros usuarios
         setInterval(() => {
@@ -202,7 +201,7 @@ const addMainListeners = () => {
                 if (!usersConnected.includes(usr.userName)) usersConnected.push(usr.userName);
             });
             clearTimeout(enableUserCollisionsTimer);
-            enableUsersColision = true;
+            enableUserCollisionsTimer = setTimeout(() => { enableUsersColision = true; }, 3000);
         }).catch(() => {
             console.log('error on add new user to scene')
         });
@@ -252,6 +251,10 @@ const addMainListeners = () => {
 }
 
 inputNameLabel.addEventListener('keyup', (e) => {
+    if(e.key == "Enter" && !configAvatar.getAttribute('disabled')) {
+        animTimeline('configAvatar');
+        return;
+    }
     clearTimeout(inputTimeout);
     inputTimeout = setTimeout(async () => {
 

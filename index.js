@@ -43,15 +43,13 @@ app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 
-// app.use(express.static("web"));
+app.use(express.static(path.join(__dirname, 'web/dist')));
 
-// app.get('/', (request, response) => {
-//   response.redirect('/index.html');
-// });
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'web/dist/index.html'));
+});
 
-const ssss = new Sockets(secIO, sessionController);
-
-ssss.init();
+new Sockets(secIO, sessionController).init();
 
 server.listen(port,() => {
 	console.log('socket server running on '+port+' port');

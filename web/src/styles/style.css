@@ -150,6 +150,7 @@ html,body {
 }
 
 .leftSelectorArrow, .rightSelectorArrow {
+  cursor: pointer;
   animation: breathing 2s ease-out infinite normal;
   img {
     width: 50px;
@@ -172,9 +173,9 @@ html,body {
 
 .oficeSelectorMasonry {
   width: 50%;
-  display: grid;
+  display: flex;
   justify-items: center;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  align-items: center;
   gap: 1rem;
 }
 
@@ -198,7 +199,7 @@ html,body {
   }
 }
 
-.floorSelectorButton:hover {
+.manoterasBg:hover {
   opacity: 1;
 }
 
@@ -212,18 +213,24 @@ html,body {
   background-image: url("/images/p0Icon.png");
   background-size: cover;
   background-repeat: no-repeat;
+  filter: grayscale(100%);
+  cursor: not-allowed;
 }
 
 .tablas2P1Bg {
   background-image: url("/images/p1Icon.png");
   background-size: cover;
   background-repeat: no-repeat;
+  filter: grayscale(100%);
+  cursor: not-allowed;
 }
 
 .tablas2P2Bg {
   background-image: url("/images/p2Icon.png");
   background-size: cover;
   background-repeat: no-repeat;
+  filter: grayscale(100%);
+  cursor: not-allowed;
 }
 
 .navigateButtons {
@@ -231,6 +238,7 @@ html,body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
 }
 
 .navigateBackButton, .navigateContinueButton{
