@@ -10,6 +10,9 @@ export class SocketConnection extends EventTarget {
     }
 
     initConnect = async () => {
+        console.log('meta: ', config.socketUrl);
+        console.log('env value: ',import.meta.env.MODE);
+        console.log('env guru: ', import.meta.env.VITE_SOCKET_URL)
         this.#connection = io(`${config.socketUrl}`, {transports: ['websocket']});
 
         this.#connection.on("connect", () => {
