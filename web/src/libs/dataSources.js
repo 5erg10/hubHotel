@@ -1,6 +1,7 @@
 import config from "../config/config";
 
 export const getUserList = () => {
+    console.log('URL: ', config.dataSourceUrl);
     return new Promise((resolve, reject) => {
         fetch(`${config.dataSourceUrl}/user/list`).then(response => 
             response.json().then(data => {
