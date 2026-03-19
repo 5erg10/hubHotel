@@ -1,9 +1,8 @@
 import config from "../config/config";
 
 export const getUserList = () => {
-    console.log('URL: ', config.dataSourceUrl);
     return new Promise((resolve, reject) => {
-        fetch(`${config.dataSourceUrl}/user/list`).then(response => 
+        fetch(`/user/list`).then(response => 
             response.json().then(data => {
                 console.log('users list: ',data);
                 resolve(data);
@@ -15,7 +14,7 @@ export const getUserList = () => {
 /* userData: {userName, office, position, rotation, userHead, userBody } */
 export const saveUser = (userData) => {
     return new Promise((resolve, reject) => {
-        fetch(`${config.dataSourceUrl}/newSessionUser`, {
+        fetch(`/newSessionUser`, {
             method: 'POST',
             headers: {
                 "Content-Type": "application/json"
