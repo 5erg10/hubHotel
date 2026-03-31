@@ -72,7 +72,7 @@ export class Scene3D extends EventTarget {
     #users;
     #renderer;
     #scene;
-    #with;
+    #width;
     #height;
     #avatarAnimConfig;
     #camera;
@@ -81,6 +81,10 @@ export class Scene3D extends EventTarget {
     #playerBox;
     #userControls = null;
     #collisionObjectName;
+    #positionAccumulator = 0;
+    #_tempVec = new THREE.Vector3();
+    #_tempVec2 = new THREE.Vector3();
+    #_tempEuler = new THREE.Euler();
 
     constructor() {
 
@@ -107,10 +111,10 @@ export class Scene3D extends EventTarget {
             head: { mixer: null, animations: null }
         };
 
-        this.#with = window.innerWidth;
+        this.#width = window.innerWidth;
         this.#height = window.innerHeight;
 
-        this.#camera = new THREE.PerspectiveCamera(60, (this.#with / this.#height), 0.01, 10000000);
+        this.#camera = new THREE.PerspectiveCamera(60, (this.#width / this.#height), 0.01, 10000000);
         this.#camera.name = "mainCamera";
         this.#camera.position.set(1, 2, 0);
 
@@ -123,9 +127,9 @@ export class Scene3D extends EventTarget {
         this.#renderer.domElement.id = 'svgObject';
         this.#renderer.sortObjects = false;
         this.#renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        this.#renderer.setSize( this.#with, this.#height );
+        this.#renderer.setSize( this.#width, this.#height );
         this.#renderer.setClearColor(0x2776b3, 1);
-        this.#renderer.setViewport(0, 0, this.#with, this.#height);
+        this.#renderer.setViewport(0, 0, this.#width, this.#height);
         this.#renderer.gammaOutput = true;
 
         this.#collisionObjectName = undefined;
@@ -270,14 +274,16 @@ export class Scene3D extends EventTarget {
             if (!userObject) return;
 
             userObject.position.set(userPosition.x, userPosition.y, userPosition.z);
-            userObject.rotation.copy(new THREE.Euler(userRotation._x, userRotation._y, userRotation._z, userRotation._order));
+            this.#_tempEuler.set(userRotation._x, userRotation._y, userRotation._z, userRotation._order);
+            userObject.rotation.copy(this.#_tempEuler);
 
             // Refresh the collision Box3 now that the user has moved.
             // This runs at the server tick rate (~30 fps), not every render frame,
             // keeping the cost proportional to actual position changes.
             const cube = userObject.userData.collisionCube;
             if (cube) {
-                cube.userData.collisionBox = new THREE.Box3().setFromObject(cube);
+                if (!cube.userData.collisionBox) cube.userData.collisionBox = new THREE.Box3();
+                cube.userData.collisionBox.setFromObject(cube);
             }
         });
     }
@@ -330,21 +336,21 @@ export class Scene3D extends EventTarget {
     };
 
     #onResize = () => {
-        this.#with   = window.innerWidth;
+        this.#width   = window.innerWidth;
         this.#height = window.innerHeight;
 
-        this.#camera.aspect = this.#with / this.#height;
+        this.#camera.aspect = this.#width / this.#height;
         this.#camera.updateProjectionMatrix();
 
-        this.#renderer.setSize(this.#with, this.#height);
-        this.#renderer.setViewport(0, 0, this.#with, this.#height);
+        this.#renderer.setSize(this.#width, this.#height);
+        this.#renderer.setViewport(0, 0, this.#width, this.#height);
     };
 
     animScene() {
 
         window.addEventListener('resize', this.#onResize);
 
-        this.#renderer.setAnimationLoop((time) => {
+        this.#renderer.setAnimationLoop(() => {
 
             this.clock.update();
             const delta = this.clock.getDelta();
@@ -355,6 +361,12 @@ export class Scene3D extends EventTarget {
             }
 
             this.#checkAvatarCollision();
+
+            this.#positionAccumulator += delta * 1000;
+            if (this.#positionAccumulator >= 33) {
+                this.#positionAccumulator = 0;
+                this.dispatchEvent(new CustomEvent('positionUpdate'));
+            }
 
             this.#camera.lookAt(this.#avatar.position);
             this.#renderer.render(this.#scene, this.#camera);
@@ -374,15 +386,13 @@ export class Scene3D extends EventTarget {
         this.#playerBox.setFromObject(collisionCube);
 
         collisionCube.updateWorldMatrix(true, false);
-        const avatarPos = new THREE.Vector3();
-        collisionCube.getWorldPosition(avatarPos);
+        collisionCube.getWorldPosition(this.#_tempVec);
 
         for (const obj of this.#interactiveObjects) {
 
             if (!obj.userData.isStaticCollider) {
-                const objPos = new THREE.Vector3();
-                obj.getWorldPosition(objPos);
-                if (avatarPos.distanceTo(objPos) > MAX_COLLISION_DISTANCE) continue;
+                obj.getWorldPosition(this.#_tempVec2);
+                if (this.#_tempVec.distanceTo(this.#_tempVec2) > MAX_COLLISION_DISTANCE) continue;
             }
 
             if (obj.userData.collisionBox && this.#playerBox.intersectsBox(obj.userData.collisionBox)) {

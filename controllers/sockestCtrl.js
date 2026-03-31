@@ -11,6 +11,7 @@ class SocketsCtrl {
         });
 
         this.#notifyUsersPosition();
+        this.sessionController.expireSessions(this.io);
     }
 
     #registerInitialListeners(socket) {
@@ -32,6 +33,7 @@ class SocketsCtrl {
         });
 
         socket.on('loginUser', (data) => {
+            if (!data?.userName || typeof data.userName !== 'string' || !data?.office) return;
             socket.user = data;
             socket.join(`${data.userName}`);
             const usersList = Object.values(this.sessionController.recoverUsers()).filter(usr => usr.office == data.office);
@@ -42,18 +44,22 @@ class SocketsCtrl {
         });
 
         socket.on('userStatus', (data) => {
+            if (!data?.userName || typeof data.userName !== 'string') return;
             this.sessionController.refreshUserPosition(data);
         });
 
         socket.on('publicChat', (data) =>  {
+            if (!data) return;
             socket.broadcast.emit('publicChatResponses', data);
         });
 
         socket.on('privateChatReceiver', (data) =>  {
+            if (!data?.userReceiver || !data?.userSender || typeof data.userReceiver !== 'string') return;
             this.io.to(data.userReceiver).emit('privateChatSender', data);
         });
 
         socket.on('privateChatClose', (data) => {
+            if (!data?.userReceiver || typeof data.userReceiver !== 'string') return;
             this.io.to(data.userReceiver).emit('privateChatCloseSender', data);
         });
     }

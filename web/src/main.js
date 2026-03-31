@@ -152,12 +152,10 @@ const init3DScene = async (floorName) => {
 
         enableUserCollisionsTimer = setTimeout(() => { enableUsersColision = true }, 3000);
 
-        // actualizo en el servidor la posicion de mi avatar para que se actualice en el mapa de otros usuarios
-        setInterval(() => {
+        // actualizo en el servidor la posicion de mi avatar sincronizado con el loop de render
+        mainScene.addEventListener('positionUpdate', () => {
             socketConnet.updateUserstatus({userName, office: floorName, position: mainScene.getAvatarPosition(), rotation: mainScene.getAvatarRotation()});
-        }, 1000 / 30);
-
-        window.scene = mainScene.getScene(); // for debug purpose
+        });
 
     } catch(error) {
         console.log('error on load scene: ', error);

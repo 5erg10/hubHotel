@@ -214,20 +214,22 @@ export class DomManiputale extends EventTarget {
 
     addPrivateMessageToChat(msg, chatUserName) {
         const safeId = this.#sanitizeId(chatUserName);
-        const messageLine = document.createElement("div");
         const chatLinesContainer = document.getElementById(`chatMessages-${safeId}`);
         const chatContainer = document.getElementById(`chatMessagesBox-${safeId}`);
 
-        messageLine.innerHTML = `<div class="chat-message">yo: ${msg}</div>`;
-        chatLinesContainer?.appendChild(messageLine.firstElementChild);
+        const line = document.createElement('div');
+        line.className = 'chat-message';
+        line.textContent = `yo: ${msg}`;
+        chatLinesContainer?.appendChild(line);
         if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
     addOtherUserMessageToChat(user, msg) {
         const safeId = this.#sanitizeId(user);
-        const messageLine = document.createElement("div");
-        messageLine.innerHTML = `<div class="chat-message-other">${user}: ${msg}</div>`;
-        document.getElementById(`chatMessages-${safeId}`)?.appendChild(messageLine.firstElementChild);
+        const line = document.createElement('div');
+        line.className = 'chat-message-other';
+        line.textContent = `${user}: ${msg}`;
+        document.getElementById(`chatMessages-${safeId}`)?.appendChild(line);
     }
 
     removePrivateChatWindow(chatUserName) {
