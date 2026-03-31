@@ -52,6 +52,10 @@ class SocketsCtrl {
         socket.on('privateChatReceiver', (data) =>  {
             this.io.to(data.userReceiver).emit('privateChatSender', data);
         });
+
+        socket.on('privateChatClose', (data) => {
+            this.io.to(data.userReceiver).emit('privateChatCloseSender', data);
+        });
     }
 
     #notifyUsersPosition() {

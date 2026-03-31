@@ -43,10 +43,10 @@ app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 
-app.use(express.static(path.join(__dirname, 'web/dist')));
+app.use(express.static(path.join(__dirname, process.env.WEB_DIR)));
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'web/dist/index.html'));
+  res.sendFile(path.join(__dirname, `${process.env.WEB_DIR}index.html`));
 });
 
 new Sockets(secIO, sessionController).init();

@@ -329,7 +329,20 @@ export class Scene3D extends EventTarget {
         });
     };
 
+    #onResize = () => {
+        this.#with   = window.innerWidth;
+        this.#height = window.innerHeight;
+
+        this.#camera.aspect = this.#with / this.#height;
+        this.#camera.updateProjectionMatrix();
+
+        this.#renderer.setSize(this.#with, this.#height);
+        this.#renderer.setViewport(0, 0, this.#with, this.#height);
+    };
+
     animScene() {
+
+        window.addEventListener('resize', this.#onResize);
 
         this.#renderer.setAnimationLoop((time) => {
 

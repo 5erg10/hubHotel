@@ -1,17 +1,28 @@
 export class DomManiputale extends EventTarget {
 
     #privatechatStyles = `
+        .private-chat-main-label {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            width: 500px;
+            max-height: calc(100vh - 2rem);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-start;
+            gap: 1rem;
+            box-sizing: border-box;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
         .chat-window{
             background-color: white;
             color: black;
             border: solid 5px black;
-            position: absolute;
-            top: 50px;
-            left: 0;
-            right: 0;
-            margin: auto;
             width: 450px;
             height: 350px;
+            flex-shrink: 0;
             display: grid;
             grid-template-rows: 30px auto 30px;
         }
@@ -62,6 +73,28 @@ export class DomManiputale extends EventTarget {
             border-top:2px solid black;
             font-size: 0.7rem;
             padding:0 1rem;
+        }
+
+        .private-chat-main-label,
+        .chat-messages-container {
+            scrollbar-width: thin;
+            scrollbar-color: #888 transparent;
+        }
+
+        .private-chat-main-label::-webkit-scrollbar,
+        .chat-messages-container::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .private-chat-main-label::-webkit-scrollbar-track,
+        .chat-messages-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .private-chat-main-label::-webkit-scrollbar-thumb,
+        .chat-messages-container::-webkit-scrollbar-thumb {
+            background-color: #888;
+            border-radius: 0;
         }
     `;
 
@@ -117,84 +150,93 @@ export class DomManiputale extends EventTarget {
         document.getElementById("additionalSecionInfo")?.remove();
     }
 
-    addPrivateChatWindow(chatUserName) {
-
-        if (!document.getElementById('privateChatWindow')) {
-
-            this.initPrivateChatStyles();
-    
-            const PrivateChatMaincontainer = document.createElement("div");
-    
-            PrivateChatMaincontainer.innerHTML = `
-            <div id="privateChatWindow" class="chat-window">
-                <div class="chat-header">
-                    <div class="chat-title">${chatUserName}</div>
-                    <div class="chat-close">X</div>
-                </div>
-    
-                <div id="chatMessagesBox" class="chat-messages-container">
-                    <div id="chatMessages" class="chat-lines"></div>
-                </div>
-    
-                <input class="chat-input" type="text">
-            </div>
-            `;
-    
-            const chatWindow = PrivateChatMaincontainer.firstElementChild;
-            
-            document.body.appendChild(PrivateChatMaincontainer.firstElementChild);
-    
-            chatWindow.querySelector(".chat-close")?.addEventListener("click", () => {
-                this.removePrivateChatWindow();
-                this.dispatchEvent(new CustomEvent('privateChatClosed'));
-            });
-    
-            const input = chatWindow.querySelector(".chat-input");
-
-            input.focus();
-    
-            chatWindow?.addEventListener("keydown", (e) => {
-                if (e.key === "Enter") {
-                    const msg = input.value.trim();
-                    if(msg) {
-                        this.addPrivateMessageToChat(msg);
-                        this.dispatchEvent(new CustomEvent('sendPrivateChat', {detail: msg}));
-                    }
-                    input.value = "";
-                }
-                if(e.key === 'Escape') {
-                    this.removePrivateChatWindow();
-                    this.dispatchEvent(new CustomEvent('privateChatClosed'));
-                }
-            });
-        }
+    #sanitizeId(name) {
+        return name.replace(/\W+/g, '_');
     }
 
-    addPrivateMessageToChat(msg) {
+    addPrivateChatWindow(chatUserName) {
+        const safeId = this.#sanitizeId(chatUserName);
 
-        const messageLine = document.createElement("div");
-        const chatLinescontainer = document.getElementById('chatMessages');
-        const chatcontainer = document.getElementById('chatMessagesBox');
+        // Añadir el contenedor principal si no existe
+        let privateChatMainContainer = document.getElementById('privateChatMainContainer');
+        if (!privateChatMainContainer) {
+            this.initPrivateChatStyles();
+            privateChatMainContainer = document.createElement("div");
+            privateChatMainContainer.id = "privateChatMainContainer";
+            privateChatMainContainer.className = "private-chat-main-label";
+            document.body.appendChild(privateChatMainContainer);
+        }
 
-        messageLine.innerHTML = `
-            <div class="chat-message">yo: ${msg}</div>
+        // No abrir ventana duplicada para el mismo usuario
+        if (document.getElementById(`privateChatWindow-${safeId}`)) return;
+
+        const privateChat = document.createElement("div");
+        privateChat.innerHTML = `
+        <div id="privateChatWindow-${safeId}" class="chat-window">
+            <div class="chat-header">
+                <div class="chat-title"></div>
+                <div class="chat-close">X</div>
+            </div>
+            <div id="chatMessagesBox-${safeId}" class="chat-messages-container">
+                <div id="chatMessages-${safeId}" class="chat-lines"></div>
+            </div>
+            <input class="chat-input" type="text">
+        </div>
         `;
 
-        chatLinescontainer?.appendChild(messageLine.firstElementChild);
+        const chatWindow = privateChat.firstElementChild;
+        chatWindow.querySelector(".chat-title").textContent = chatUserName;
+        privateChatMainContainer.appendChild(chatWindow);
 
-        chatcontainer.scrollTop = chatcontainer?.scrollHeight;
+        chatWindow.querySelector(".chat-close")?.addEventListener("click", () => {
+            this.removePrivateChatWindow(chatUserName);
+            this.dispatchEvent(new CustomEvent('privateChatClosed', { detail: chatUserName }));
+        });
+
+        const input = chatWindow.querySelector(".chat-input");
+        input.focus();
+
+        chatWindow.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                const msg = input.value.trim();
+                if (msg) {
+                    this.addPrivateMessageToChat(msg, chatUserName);
+                    this.dispatchEvent(new CustomEvent('sendPrivateChat', { detail: { msg, chatUserName } }));
+                }
+                input.value = "";
+            }
+            if (e.key === 'Escape') {
+                this.removePrivateChatWindow(chatUserName);
+                this.dispatchEvent(new CustomEvent('privateChatClosed', { detail: chatUserName }));
+            }
+        });
+    }
+
+    addPrivateMessageToChat(msg, chatUserName) {
+        const safeId = this.#sanitizeId(chatUserName);
+        const messageLine = document.createElement("div");
+        const chatLinesContainer = document.getElementById(`chatMessages-${safeId}`);
+        const chatContainer = document.getElementById(`chatMessagesBox-${safeId}`);
+
+        messageLine.innerHTML = `<div class="chat-message">yo: ${msg}</div>`;
+        chatLinesContainer?.appendChild(messageLine.firstElementChild);
+        if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
     addOtherUserMessageToChat(user, msg) {
+        const safeId = this.#sanitizeId(user);
         const messageLine = document.createElement("div");
-        messageLine.innerHTML = `
-            <div class="chat-message-other">${user}: ${msg}</div>
-        `;
-        document.getElementById('chatMessages')?.appendChild(messageLine.firstElementChild);
+        messageLine.innerHTML = `<div class="chat-message-other">${user}: ${msg}</div>`;
+        document.getElementById(`chatMessages-${safeId}`)?.appendChild(messageLine.firstElementChild);
     }
 
-    removePrivateChatWindow() {
-        document.getElementById('privateChatWindow')?.remove();
-        document.getElementById('private-chat-styles')?.remove();
+    removePrivateChatWindow(chatUserName) {
+        const safeId = this.#sanitizeId(chatUserName);
+        document.getElementById(`privateChatWindow-${safeId}`)?.remove();
+        const container = document.getElementById('privateChatMainContainer');
+        if (container && container.children.length === 0) {
+            container.remove();
+            document.getElementById('private-chat-styles')?.remove();
+        }
     }
 }

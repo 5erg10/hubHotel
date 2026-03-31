@@ -43,6 +43,16 @@ export class SocketConnection extends EventTarget {
         this.#connection.emit('privateChatReceiver', {userSender: userSender, userReceiver: userToSend, message});
     }
 
+    sendPrivateChatClose = ({userSender, userToSend}) => {
+        this.#connection.emit('privateChatClose', {userSender, userReceiver: userToSend});
+    }
+
+    subscribeToPrivateChatClose = () => {
+        this.#connection.on('privateChatCloseSender', (data) => {
+            this.dispatchEvent(new CustomEvent('privateChatCloseReceive', {detail: data}));
+        });
+    }
+
     updateUserstatus = (user) => {
         this.#connection.emit('userStatus', user);
     }

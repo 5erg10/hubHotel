@@ -6,7 +6,7 @@ import { DataSource } from './libs/dataSources.js';
 import { DomManiputale } from './libs/DomManipulate.js';
 import { SoundManager } from './libs/audioMixer.js';
 
-let inputTimeout, userName, usersList, usersConnected = [], userChating;
+let inputTimeout, userName, usersList, usersConnected = [];
 const saveUserDataOnLocalStorage = false;
 let enableUsersColision = false, enableUserCollisionsTimer;
 
@@ -92,7 +92,6 @@ const collisionReaction = (objectName) => {
     if (!!sections[cleanName]) domManipulator.addSeccionDetailsToWindow(sections[cleanName]);
     if(enableUsersColision && usersConnected.includes(cleanName)) {
         if(!!userController) userController.disableControls();
-        userChating = cleanName;
         domManipulator.addPrivateChatWindow(cleanName);
     }
 }
@@ -142,6 +141,9 @@ const init3DScene = async (floorName) => {
 
         // se subscribe al canal privado de sockets para recibir mensajes de otros usuarios
         socketConnet.subscribeToPrivateChannel();
+
+        // se subscribe al canal que notifica cuando otro usuario cierra su chat
+        socketConnet.subscribeToPrivateChatClose();
 
         // se subscribe al canal que informa de la position del resto de usuarios para que el evento refreshUsersPosition actualice la actualice en el mapa
         socketConnet.receiveUserStatus();
@@ -240,13 +242,20 @@ const addMainListeners = () => {
 
     // envia un mensaje privado a otro usuario
     domManipulator.addEventListener('sendPrivateChat', (msg) => {
-        console.log('user chating: ', userChating);
-        if(msg.detail) socketConnet.sendPrivateMessage({userSender: userConfig.userName, userToSend: userChating, message: msg.detail});
+        if (msg.detail?.msg) socketConnet.sendPrivateMessage({userSender: userConfig.userName, userToSend: msg.detail.chatUserName, message: msg.detail.msg});
     });
 
-    // envia un mensaje privado a otro usuario
-    domManipulator.addEventListener('privateChatClosed', () => {
-        if(!!userController) userController.enableControls();
+    // cierra un mensaje privado con otro usuario (accion local)
+    domManipulator.addEventListener('privateChatClosed', (e) => {
+        socketConnet.sendPrivateChatClose({userSender: userConfig.userName, userToSend: e.detail});
+        if (!document.getElementById('privateChatMainContainer')) userController.enableControls();
+    });
+
+    // otro usuario ha cerrado su chat con nosotros
+    socketConnet.addEventListener('privateChatCloseReceive', (e) => {
+        const cleanName = e.detail.userSender.replace(/\d/g, "").toLowerCase();
+        domManipulator.removePrivateChatWindow(cleanName);
+        if (!document.getElementById('privateChatMainContainer')) userController.enableControls();
     });
 }
 
