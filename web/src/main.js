@@ -6,7 +6,7 @@ import { DataSource } from './libs/dataSources.js';
 import { DomManiputale } from './libs/DomManipulate.js';
 import { SoundManager } from './libs/audioMixer.js';
 
-let inputTimeout, userName, usersList, usersConnected = [];
+let inputTimeout, userName, usersList, usersConnected = [], currentStep = 'splash';
 const saveUserDataOnLocalStorage = false;
 let enableUsersColision = false, enableUserCollisionsTimer;
 
@@ -163,12 +163,17 @@ const init3DScene = async (floorName) => {
     }
 };
 
+const STEP_ORDER = ['splash', 'configName', 'configAvatar', 'selectOffice'];
+
 const animTimeline = (step) => {
-    if(step === 'back') {
+    if (step === 'back') {
         timeline.reverse();
+        const idx = STEP_ORDER.indexOf(currentStep);
+        if (idx > 0) currentStep = STEP_ORDER[idx - 1];
         return;
     }
     timeline.tweenTo(step);
+    currentStep = step;
 }
 
 const setAvatarConfig = (part, step) => {
@@ -258,7 +263,7 @@ const addMainListeners = () => {
 }
 
 inputNameLabel.addEventListener('keyup', (e) => {
-    if(e.key == "Enter" && !configAvatar.getAttribute('disabled')) {
+    if(e.key == "Enter" && !configAvatar.getAttribute('disabled') && currentStep === 'configName') {
         animTimeline('configAvatar');
         return;
     }
@@ -283,6 +288,13 @@ inputNameLabel.addEventListener('keyup', (e) => {
             userNameAdvice.innerHTML = ''
         }
     }, 500);
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    if (currentStep === 'splash') { currentStep = 'loading'; initApp(); }
+    else if (currentStep === 'configAvatar') animTimeline('selectOffice');
+    else if (currentStep === 'selectOffice') init3DScene('manoteras');
 });
 
 document.addEventListener("visibilitychange", () => {
