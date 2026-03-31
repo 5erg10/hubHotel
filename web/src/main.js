@@ -214,8 +214,11 @@ const addMainListeners = () => {
 
     // Notifica cuando un usuario sale de la aplicacion para eliminar su Avatar del mapa
     socketConnet.addEventListener('userLeave', (event) => {
-        mainScene.removeExternalUserFromScene(event.detail.userName);
-        usersConnected = usersConnected.filter(usr => usr != event.detail.userName);
+        const leavingUser = event.detail.userName;
+        mainScene.removeExternalUserFromScene(leavingUser);
+        usersConnected = usersConnected.filter(usr => usr != leavingUser);
+        domManipulator.removePrivateChatWindow(leavingUser);
+        if (!document.getElementById('privateChatMainContainer')) userController.enableControls();
     });
 
     // Recive la posicion de los usuarios para actualizarla en el mapa
