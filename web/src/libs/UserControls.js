@@ -136,7 +136,8 @@ export class UserControls {
     };
 
     enableControls = () => {
-        if (!this.avatar || !this.avatar || !this.animConfig) return;
+        if (!this.avatar || !this.animConfig) return;
+        if (this.#loopId !== null) return;
         document.addEventListener('keydown', this.#onKeyDown);
         document.addEventListener('keyup',   this.#onKeyUp);
         this.#loopId = requestAnimationFrame(this.#loop);

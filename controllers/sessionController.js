@@ -48,33 +48,10 @@ const refreshUserPosition = (data) => {
   }
 }
 
-const expireSessions = (io) => {
-  const now = Date.now();
-
-  Object.keys(sessions).forEach(userName => {
-    if (now - sessions[userName].timestamp > SESSION_TTL_MS) {
-      const userData = sessions[userName];
-      removeUser(userData);
-      const officeUsers = Object.values(sessions).filter(u => u.office === userData.office);
-      officeUsers.forEach(u => io.to(u.userName).emit('userLeave', userData));
-      console.log(`Session expired: ${userName}`);
-    }
-  });
-
-  const keys = Object.keys(sessions);
-  if (keys.length !== usersLength) {
-    usersLength = keys.length;
-    console.log('Connected users: ', keys.join(' '));
-  }
-
-  setTimeout(() => expireSessions(io), 3000);
-}
-
 module.exports = {
   usersList,
   addNewUser,
   removeUser,
-  expireSessions,
   refreshUserPosition,
   recoverUsers
 }

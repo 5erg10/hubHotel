@@ -11,7 +11,6 @@ class SocketsCtrl {
         });
 
         this.#notifyUsersPosition();
-        this.sessionController.expireSessions(this.io);
     }
 
     #registerInitialListeners(socket) {
